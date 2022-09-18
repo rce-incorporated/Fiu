@@ -1,9 +1,4 @@
 local Bytestring = "\003\002\005print\vHello World\001\002\000\000\001\006A\000\000\000\f\000\001\000\000\000\000@\005\001\002\000\021\000\002\001\022\000\001\000\003\003\001\004\000\000\000@\003\002\000\001\000\001\024\000\000\000\000\000\000\001\000\000\000\000\000";
-local luaF_newmodule;
-local luaF_newLclosure;
-local luaF_dispatch;
-local luaU_undump;
-local luaF_wrap;
 local op_names = {
 	[0] = "NOP",
 	"BREAK",
@@ -160,8 +155,8 @@ local op_list = {
 	JUMPXEQKS = "AE",
 	FASTCALL = "A",
 	CAPTURE = "AB",
-	JUMPIFCONSTANT = "AD",
-	JUMPIFNOTCONSTANT = "AD",
+	JUMPIFK = "AD",
+	JUMPIFNOTK = "AD",
 	FASTCALL1 = "ABC",
 	FASTCALL2 = "ABC",
 	FASTCALL2K = "ABC",
@@ -169,45 +164,45 @@ local op_list = {
 	NOP = "ABC",
 	BREAK = "ABC"
 };
-local function fail(msg)
-	error(msg .. " precompiled chunk", 0);
+local function deserializer_fail(msg)
+	error(msg .. " Incorrect Version Provided", 0);
 end;
-function luaF_newmodule()
+local function luau_newmodule()
 	local m = {};
 	m.slist = {};
 	m.plist = {};
 	return m;
 end;
-function luaF_newLclosure()
+local function luau_newproto()
 	local c = {};
 	c.code = {};
 	c.k = {};
 	c.p = {};
 	return c;
 end;
-function luaU_undump(chunk)
+local function luau_deserialize(chunk)
 	local position = 1;
-	local module = luaF_newmodule();
+	local module = luau_newmodule();
 	local readproto;
-	local function readbyte()
+	local function read_byte()
 		local b = string.unpack(">B", chunk, position);
 		position = position + 1;
 		return b;
 	end;
-	local function readinteger()
+	local function read_integer()
 		local int = string.unpack("I4", chunk, position);
 		position = position + 4;
 		return int;
 	end;
-	local function readdouble()
+	local function read_double()
 		local d = string.unpack("d", chunk, position);
 		position = position + 8;
 		return d;
 	end;
-	local function readvariableinteger()
+	local function read_variable_integer()
 		local result = 0;
 		for i = 0, 7 do
-			local value = readbyte();
+			local value = read_byte();
 			result = bit32.bor(result, bit32.lshift(bit32.band(value, 127), i * 7));
 			if bit32.band(value, 128) == 0 then
 				break;
@@ -215,8 +210,8 @@ function luaU_undump(chunk)
 		end;
 		return result;
 	end;
-	local function readstring()
-		local size = readvariableinteger();
+	local function read_string()
+		local size = read_variable_integer();
 		local str;
 		if size == 0 then
 			return "";
@@ -226,126 +221,154 @@ function luaU_undump(chunk)
 		end;
 		return str;
 	end;
-	local function readconstant()
-		local kt = readbyte();
-		if kt == 0 then
-			return {
-				type = "nil",
-				data = nil
-			};
-		elseif kt == 1 then
-			return {
-				type = "bool",
-				data = readbyte() ~= 0
-			};
-		elseif kt == 2 then
-			return {
-				type = "number",
-				data = readdouble()
-			};
-		elseif kt == 3 then
-			return {
-				type = "string",
-				data = readvariableinteger()
-			};
-		elseif kt == 4 then
-			return {
-				type = "import",
-				data = readinteger()
-			};
-		elseif kt == 5 then
-			local data = {};
-			local dataLength = readvariableinteger();
-			for i = 1, dataLength do
-				table.insert(data, readvariableinteger());
-			end;
-			return {
-				type = "table",
-				data = data
-			};
-		elseif kt == 6 then
-			return {
-				type = "closure",
-				data = readvariableinteger()
-			};
-		end;
-	end;
-	local function readinstruction()
-		local i = {};
-		i.value = readinteger();
-		i.opcode = op_names[bit32.band(i.value, 255)];
-		i.type = op_list[i.opcode];
-		if i.type == "ABC" then
-			i.A = bit32.band(bit32.rshift(i.value, 8), 255);
-			i.B = bit32.band(bit32.rshift(i.value, 16), 255);
-			i.C = bit32.band(bit32.rshift(i.value, 24), 255);
-		elseif i.type == "AB" then
-			i.A = bit32.band(bit32.rshift(i.value, 8), 255);
-			i.B = bit32.band(bit32.rshift(i.value, 16), 255);
-		elseif i.type == "A" then
-			i.A = bit32.band(bit32.rshift(i.value, 8), 255);
-		elseif i.type == "AD" then
-			i.A = bit32.band(bit32.rshift(i.value, 8), 255);
-			local temp = bit32.band(bit32.rshift(i.value, 16), 255);
-			i.D = temp < 32768 and temp or temp - 65536;
-		elseif i.type == "AE" then
-			local temp = bit32.band(bit32.rshift(i.value, 8), 255);
-			i.E = temp < 8388608 and temp or temp - 16777216;
-		end;
-		return i;
-	end;
 	local function readproto()
-		local p = luaF_newLclosure();
-		p.maxstacksize = readbyte();
-		p.numparams = readbyte();
-		p.nups = readbyte();
-		p.isvararg = readbyte() ~= 0;
-		p.sizecode = readvariableinteger();
+		local p = luau_newproto();
+		p.maxstacksize = read_byte();
+		p.numparams = read_byte();
+		p.nups = read_byte();
+		p.isvararg = read_byte() ~= 0;
+		p.sizecode = read_variable_integer();
 		for i = 1, p.sizecode do
-			table.insert(p.code, readinstruction());
+			local i = {};
+			i.value = read_integer();
+			i.opcode = op_names[bit32.band(i.value, 255)];
+			i.type = op_list[i.opcode];
+			if i.type == "ABC" then
+				i.A = bit32.band(bit32.rshift(i.value, 8), 255);
+				i.B = bit32.band(bit32.rshift(i.value, 16), 255);
+				i.C = bit32.band(bit32.rshift(i.value, 24), 255);
+			elseif i.type == "AB" then
+				i.A = bit32.band(bit32.rshift(i.value, 8), 255);
+				i.B = bit32.band(bit32.rshift(i.value, 16), 255);
+			elseif i.type == "A" then
+				i.A = bit32.band(bit32.rshift(i.value, 8), 255);
+			elseif i.type == "AD" then
+				i.A = bit32.band(bit32.rshift(i.value, 8), 255);
+				local temp = bit32.band(bit32.rshift(i.value, 16), 255);
+				i.D = temp < 32768 and temp or temp - 65536;
+			elseif i.type == "AE" then
+				local temp = bit32.band(bit32.rshift(i.value, 8), 255);
+				i.E = temp < 8388608 and temp or temp - 16777216;
+			end;
+			table.insert(p.code, i);
 		end;
-		p.sizek = readvariableinteger();
+		p.sizek = read_variable_integer();
 		for i = 1, p.sizek do
-			table.insert(p.k, readconstant());
+			local kt = read_byte();
+			local k = {};
+			if kt == 0 then
+				k.type = "nil";
+				k.data = nil;
+			elseif kt == 1 then
+				k.type = "bool";
+				k.data = read_byte() ~= 0;
+			elseif kt == 2 then
+				k.type = "number";
+				k.data = read_double();
+			elseif kt == 3 then
+				k.type = "string";
+				k.data = read_variable_integer();
+			elseif kt == 4 then
+				k.type = "import";
+				k.data = read_integer();
+			elseif kt == 5 then
+				local data = {};
+				local dataLength = read_variable_integer();
+				for i = 1, dataLength do
+					table.insert(data, read_variable_integer());
+				end;
+				k.type = "table";
+				k.data = data;
+			elseif kt == 6 then
+				k.type = "closure";
+				k.data = read_variable_integer();
+			end;
+			table.insert(p.k, k);
 		end;
-		p.sizep = readvariableinteger();
+		p.sizep = read_variable_integer();
 		for i = 1, p.sizep do
-			table.insert(p.p, readvariableinteger());
+			table.insert(p.p, read_variable_integer());
 		end;
-		readvariableinteger();
-		readvariableinteger();
-		if readbyte() ~= 0 then
-			local lineGap = readbyte();
+		read_variable_integer();
+		read_variable_integer();
+		if read_byte() ~= 0 then
+			local lineGap = read_byte();
 			for i = 1, p.sizecode do
-				readbyte();
+				read_byte();
 			end;
 			local intervals = bit32.rshift(p.sizecode - 1, lineGap) + 1;
 			for i = 1, intervals do
-				readinteger();
+				read_integer();
 			end;
 		end;
-		if readbyte() ~= 0 then
-			local sizel = readvariableinteger();
+		if read_byte() ~= 0 then
+			local sizel = read_variable_integer();
 			for i = 1, sizel do
-				readvariableinteger();
-				readvariableinteger();
-				readvariableinteger();
-				readbyte();
+				read_variable_integer();
+				read_variable_integer();
+				read_variable_integer();
+				read_byte();
 			end;
 		end;
 		return p;
 	end;
-	local luauVersion = readbyte();
+	local luauVersion = read_byte();
 	if luauVersion ~= 3 then
-		fail("Fiu expected Luau bytecode!");
+		deserializer_fail("Fiu expected Luau bytecode!");
 	end;
-	local stringCount = readvariableinteger();
+	local stringCount = read_variable_integer();
 	for i = 1, stringCount do
-		table.insert(module.slist, readstring());
+		table.insert(module.slist, read_string());
 	end;
-	local protoCount = readvariableinteger();
+	local protoCount = read_variable_integer();
 	for i = 1, protoCount do
 		table.insert(module.plist, readproto());
 	end;
+	module.mainp = read_variable_integer();
+	return module;
 end;
-luaU_undump(Bytestring);
+local function luau_wrapclosure(proto, env, upval)
+	local function vm_fail(pc, opcode_name, traceback)
+		error(string.format("Fiu VM Error PC: %s Opcode: %s: \n", pc, opcode_name) .. traceback, 0);
+	end;
+	local function wrapped(...)
+		local passed = table.pack(...);
+		local memory = table.create(proto.maxstacksize);
+		local vararg = {
+			len = 0,
+			list = {}
+		};
+		table.move(passed, 1, proto.numparams, 0, memory);
+		if proto.numparams < passed.n then
+			local start = proto.numparams + 1;
+			local len = passed.n - proto.numparams;
+			vararg.len = len;
+			table.move(passed, start, start + len - 1, 1, vararg.list);
+		end;
+		local state = {
+			vararg = vararg,
+			memory = memory,
+			code = proto.code,
+			protos = proto.p,
+			pc = 1
+		};
+		local result = table.pack(pcall(run_lua_func, state, env, upval));
+		if result[1] then
+			return table.unpack(result, 2, result.n);
+		else
+			vm_fail(state.pc, proto.code[state.pc].opcode, result[2]);
+			return;
+		end;
+	end;
+	return wrapped;
+end;
+local function luau_load(module, env)
+	local proto = module.plist[module.mainp + 1];
+	return luau_wrapclosure(proto, env);
+end;
+local chunk = luau_deserialize(Bytestring);
+(luau_load(chunk, getfenv()))();
+return {
+	luau_load = luau_load,
+	luau_wrapclosure = luau_wrapclosure
+};

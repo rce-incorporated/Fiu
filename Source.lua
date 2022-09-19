@@ -1,199 +1,119 @@
-local Bytestring =
-	"\003\002\005print\vHello World\001\002\000\000\001\006A\000\000\000\f\000\001\000\000\000\000@\005\001\002\000\021\000\002\001\022\000\001\000\003\003\001\004\000\000\000@\003\002\000\001\000\001\024\000\000\000\000\000\000\001\000\000\000\000\000"
 local function luau_newmodule()
-	local m = {}
-	m.slist = {}
-	m.plist = {}
-	return m
+	return {
+		slist = {},
+		plist = {}
+	}
 end
 local function luau_newproto()
-	local c = {}
-	c.code = {}
-	c.k = {}
-	c.protos = {}
-	return c
+	return {
+		code = {},
+		k = {},
+		protos = {}
+	}
 end
-local op_names = {
-	[0] = "NOP",
-	"BREAK",
-	"LOADNIL",
-	"LOADB",
-	"LOADN",
-	"LOADK",
-	"MOVE",
-	"GETGLOBAL",
-	"SETGLOBAL",
-	"GETUPVAL",
-	"SETUPVAL",
-	"CLOSEUPVALS",
-	"GETIMPORT",
-	"GETTABLE",
-	"SETTABLE",
-	"GETTABLEKS",
-	"SETTABLEKS",
-	"GETTABLEN",
-	"SETTABLEN",
-	"NEWCLOSURE",
-	"NAMECALL",
-	"CALL",
-	"RETURN",
-	"JUMP",
-	"JUMPBACK",
-	"JUMPIF",
-	"JUMPIFNOT",
-	"JUMPIFEQ",
-	"JUMPIFLE",
-	"JUMPIFLT",
-	"JUMPIFNOTEQ",
-	"JUMPIFNOTLE",
-	"JUMPIFNOTLT",
-	"ADD",
-	"SUB",
-	"MUL",
-	"DIV",
-	"MOD",
-	"POW",
-	"ADDK",
-	"SUBK",
-	"MULK",
-	"DIVK",
-	"MODK",
-	"POWK",
-	"AND",
-	"OR",
-	"ANDK",
-	"ORK",
-	"CONCAT",
-	"NOT",
-	"MINUS",
-	"LENGTH",
-	"NEWTABLE",
-	"DUPTABLE",
-	"SETLIST",
-	"FORNPREP",
-	"FORNLOOP",
-	"FORGLOOP",
-	"FORGPREP_INEXT",
-	"FORGLOOP_INEXT",
-	"FORGPREP_NEXT",
-	"FORGLOOP_NEXT",
-	"GETVARARGS",
-	"DUPCLOSURE",
-	"PREPVARARGS",
-	"LOADKX",
-	"JUMPX",
-	"FASTCALL",
-	"COVERAGE",
-	"CAPTURE",
-	"JUMPIFEQK",
-	"JUMPIFNOEQK",
-	"FASTCALL1",
-	"FASTCALL2",
-	"FASTCALL2K",
-	"FORGPREP",
-	"JUMPXEQKNIL",
-	"JUMPXEQKB",
-	"JUMPXEQKN",
-	"JUMPXEQKS",
-}
+--[[
+NOP/REMOVED - 0
+A - 1
+AB - 2
+ABC - 3
+AD - 4
+AE - 5 
+]]
 local op_list = {
-	LOADNIL = "A",
-	LOADB = "ABC",
-	LOADN = "A",
-	LOADK = "AD",
-	MOVE = "AB",
-	GETGLOBAL = "A",
-	SETGLOBAL = "A",
-	GETUPVALUE = "AB",
-	SETUPVALUE = "AB",
-	CLOSEUPVALUES = "A",
-	GETIMPORT = "AD",
-	GETTABLE = "ABC",
-	SETTABLE = "ABC",
-	GETTABLEKEY = "AB",
-	SETTABLEKEY = "AB",
-	GETTABLEINDEX = "AB",
-	SETTABLEINDEX = "AB",
-	NEWCLOSURE = "AD",
-	NAMECALL = "AB",
-	CALL = "ABC",
-	RETURN = "AB",
-	JUMP = "AD",
-	JUMPBACK = "AD",
-	JUMPIF = "AD",
-	JUMPIFNOT = "AD",
-	JUMPIFEQ = "AD",
-	JUMPIFLE = "AD",
-	JUMPIFLT = "AD",
-	JUMPIFNOTEQ = "AD",
-	JUMPIFNOTLE = "AD",
-	JUMPIFNOTLT = "AD",
-	ADD = "ABC",
-	SUB = "ABC",
-	MUL = "ABC",
-	DIV = "ABC",
-	MOD = "ABC",
-	POW = "ABC",
-	ADDK = "ABC",
-	SUBK = "ABC",
-	MULK = "ABC",
-	DIVK = "ABC",
-	MODK = "ABC",
-	POWK = "ABC",
-	AND = "ABC",
-	OR = "ABC",
-	ANDK = "ABC",
-	ORK = "ABC",
-	CONCAT = "ABC",
-	NOT = "AB",
-	MINUS = "AB",
-	LENGTH = "AB",
-	NEWTABLE = "A",
-	DUPTABLE = "AD",
-	SETLIST = "ABC",
-	FORNPREP = "AD",
-	FORNLOOP = "AD",
-	FORGLOOP = "AD",
-	FORGPREP_INEXT = "AD",
-	FORGLOOP_INEXT = "AD",
-	FORGPREP_NEXT = "AD",
-	FORGLOOP_NEXT = "AD",
-	GETVARARGS = "AB",
-	DUPCLOSURE = "AD",
-	PREPVARARGS = "A",
-	LOADKX = "ABC",
-	JUMPX = "AE",
-	JUMPXEQKNIL = "AE",
-	JUMPXEQKB = "AE",
-	JUMPXEQKN = "AE",
-	JUMPXEQKS = "AE",
-	FASTCALL = "A",
-	CAPTURE = "AB",
-	JUMPIFK = "AD",
-	JUMPIFNOTK = "AD",
-	FASTCALL1 = "ABC",
-	FASTCALL2 = "ABC",
-	FASTCALL2K = "ABC",
-	COVERAGE = "ABC",
-	NOP = "ABC",
-	BREAK = "ABC",
+	[0] = {"NOP", 0},
+	{"BREAK", 0},
+	{"LOADNIL", 1},
+	{"LOADB", 3},
+	{"LOADN", 4},
+	{"LOADK", 4},
+	{"MOVE", 2},
+	{"GETGLOBAL", 1},
+	{"SETGLOBAL", 1},
+	{"GETUPVAL", 2},
+	{"SETUPVAL", 2},
+	{"CLOSEUPVALS", 1},
+	{"GETIMPORT", 4},
+	{"GETTABLE", 3},
+	{"SETTABLE", 3},
+	{"GETTABLEKS", 3},
+	{"SETTABLEKS", 3},
+	{"GETTABLEN", 3},
+	{"SETTABLEN", 3},
+	{"NEWCLOSURE", 4},
+	{"NAMECALL", 3},
+	{"CALL", 3},
+	{"RETURN", 2},
+	{"JUMP", 4},
+	{"JUMPBACK", 4},
+	{"JUMPIF", 4},
+	{"JUMPIFNOT", 4},
+	{"JUMPIFEQ", 4},
+	{"JUMPIFLE", 4},
+	{"JUMPIFLT", 4},
+	{"JUMPIFNOTEQ", 4},
+	{"JUMPIFNOTLE", 4},
+	{"JUMPIFNOTLT", 4},
+	{"ADD", 3},
+	{"SUB", 3},
+	{"MUL", 3},
+	{"DIV", 3},
+	{"MOD", 3},
+	{"POW", 3},
+	{"ADDK", 3},
+	{"SUBK", 3},
+	{"MULK", 3},
+	{"DIVK", 3},
+	{"MODK", 3},
+	{"POWK", 3},
+	{"AND", 3},
+	{"OR", 3},
+	{"ANDK", 3},
+	{"ORK", 3},
+	{"CONCAT", 3},
+	{"NOT", 2},
+	{"MINUS", 2},
+	{"LENGTH", 2},
+	{"NEWTABLE", 2},
+	{"DUPTABLE", 4},
+	{"SETLIST", 4},
+	{"FORNPREP", 4},
+	{"FORNLOOP", 4},
+	{"FORGLOOP", 4},
+	{"FORGPREP_INEXT", 1},
+	{"LOP_DEP_FORGLOOP_INEXT", 0},
+	{"FORGPREP_NEXT", 1},
+	{"LOP_DEP_FORGLOOP_NEXT", 0},
+	{"GETVARARGS", 2},
+	{"DUPCLOSURE", 4},
+	{"PREPVARARGS", 1},
+	{"LOADKX", 1},
+	{"JUMPX", 5},
+	{"FASTCALL", 3},
+	{"COVERAGE", 5},
+	{"CAPTURE", 2},
+	{"LOP_DEP_JUMPIFEQK", 0},
+    {"LOP_DEP_JUMPIFNOTEQK", 0},
+	{"FASTCALL1", 3},
+	{"FASTCALL2", 3},
+	{"FASTCALL2K", 3},
+	{"FORGPREP", 4},
+	{"JUMPXEQKNIL", 4},
+	{"JUMPXEQKB", 4},
+	{"JUMPXEQKN", 4},
+	{"JUMPXEQKS", 4}
 }
-local function luau_deserialize(chunk)
+
+local function luau_deserialize(bytecode)
 	local position = 1
 	local function read_byte()
-		local b = string.unpack(">B", chunk, position)
+		local b = string.unpack(">B", bytecode, position)
 		position = position + 1
 		return b
 	end
 	local function read_integer()
-		local int = string.unpack("I4", chunk, position)
+		local int = string.unpack("I4", bytecode, position)
 		position = position + 4
 		return int
-	end
-	local function read_double()
-		local d = string.unpack("d", chunk, position)
-		position = position + 8
-		return d
 	end
 	local function read_variable_integer()
 		local result = 0
@@ -212,7 +132,7 @@ local function luau_deserialize(chunk)
 		if size == 0 then
 			return ""
 		else
-			str = string.unpack("c" .. size, chunk, position)
+			str = string.unpack("c" .. size, bytecode, position)
 			position = position + size
 		end
 		return str
@@ -228,22 +148,23 @@ local function luau_deserialize(chunk)
 			local i = {}
 			i.value = read_integer()
 			i.opcode = bit32.band(i.value, 0xFF)
-			i.opname = op_names[i.opcode]
-			i.type = op_list[i.opname]
-			if i.type == "ABC" then
+			local opcode = op_list[i.opcode]
+			i.opname = opcode[1]
+			i.type = opcode[2]
+			if i.type == 3 then --[[ ABC ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
 				i.B = bit32.band(bit32.rshift(i.value, 16), 0xFF)
 				i.C = bit32.band(bit32.rshift(i.value, 24), 0xFF)
-			elseif i.type == "AB" then
+			elseif i.type == 2 then --[[ AB ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
 				i.B = bit32.band(bit32.rshift(i.value, 16), 0xFF)
-			elseif i.type == "A" then
+			elseif i.type == 1 then --[[ A ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-			elseif i.type == "AD" then
+			elseif i.type == 4 then --[[ AD ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
 				local temp = bit32.band(bit32.rshift(i.value, 16), 0xFF)
 				i.D = if temp < 0x8000 then temp else temp - 0x10000
-			elseif i.type == "AE" then
+			elseif i.type == 5 then --[[ AE ]]
 				local temp = bit32.band(bit32.rshift(i.value, 8), 0xFF)
 				i.E = if temp < 0x800000 then temp else temp - 0x1000000
 			end
@@ -261,7 +182,9 @@ local function luau_deserialize(chunk)
 				k.data = read_byte() ~= 0
 			elseif kt == 2 then
 				k.type = "number"
-				k.data = read_double()
+				local d = string.unpack("d", bytecode, position)
+				position = position + 8
+				k.data = d
 			elseif kt == 3 then
 				k.type = "string"
 				k.data = read_variable_integer()
@@ -323,12 +246,17 @@ local function luau_deserialize(chunk)
 		table.insert(module.plist, readproto())
 	end
 	module.mainp = read_variable_integer()
+	assert(position == #bytecode + 1, "Deserializer Position Mismatch")
 	return module
 end
 local function luau_load(module, env)
+	if (type(module) == "string") then 
+		module = luau_deserialize(module)
+	end 
+
 	local mainProto = module.plist[module.mainp + 1]
 	local stringsList = module.slist
-	local function luau_wrapclosure(module, proto, env, upval)
+	local function luau_wrapclosure(module, proto, upval)
 		local function luau_execute(debugging, protos, code, varargs)
 			local top, pc, stack = -1, 1, {}
 			local constants = proto.k
@@ -394,7 +322,12 @@ local function luau_load(module, env)
 				table.move(passed, start, start + len - 1, 1, varargs.list)
 			end
 			local debugging = {}
-			local result = table.pack(pcall(luau_execute, debugging, proto.protos, proto.code, varargs))
+			local result 
+			if false then 
+				result = table.pack(pcall(luau_execute, debugging, proto.protos, proto.code, varargs))
+			else
+				result = table.pack(true, luau_execute(debugging, proto.protos, proto.code, varargs))
+			end
 			if result[1] then
 				return table.unpack(result, 2, result.n)
 			else
@@ -403,7 +336,7 @@ local function luau_load(module, env)
 		end
 		return wrapped
 	end
-	return luau_wrapclosure(module, mainProto, env)
+	return luau_wrapclosure(module, mainProto)
 end
 
 return {

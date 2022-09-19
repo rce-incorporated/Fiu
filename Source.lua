@@ -1,172 +1,4 @@
 local Bytestring = "\003\002\005print\vHello World\001\002\000\000\001\006A\000\000\000\f\000\001\000\000\000\000@\005\001\002\000\021\000\002\001\022\000\001\000\003\003\001\004\000\000\000@\003\002\000\001\000\001\024\000\000\000\000\000\000\001\000\000\000\000\000";
-local op_names = {
-	[0] = "NOP",
-	"BREAK",
-	"LOADNIL",
-	"LOADB",
-	"LOADN",
-	"LOADK",
-	"MOVE",
-	"GETGLOBAL",
-	"SETGLOBAL",
-	"GETUPVAL",
-	"SETUPVAL",
-	"CLOSEUPVALS",
-	"GETIMPORT",
-	"GETTABLE",
-	"SETTABLE",
-	"GETTABLEKS",
-	"SETTABLEKS",
-	"GETTABLEN",
-	"SETTABLEN",
-	"NEWCLOSURE",
-	"NAMECALL",
-	"CALL",
-	"RETURN",
-	"JUMP",
-	"JUMPBACK",
-	"JUMPIF",
-	"JUMPIFNOT",
-	"JUMPIFEQ",
-	"JUMPIFLE",
-	"JUMPIFLT",
-	"JUMPIFNOTEQ",
-	"JUMPIFNOTLE",
-	"JUMPIFNOTLT",
-	"ADD",
-	"SUB",
-	"MUL",
-	"DIV",
-	"MOD",
-	"POW",
-	"ADDK",
-	"SUBK",
-	"MULK",
-	"DIVK",
-	"MODK",
-	"POWK",
-	"AND",
-	"OR",
-	"ANDK",
-	"ORK",
-	"CONCAT",
-	"NOT",
-	"MINUS",
-	"LENGTH",
-	"NEWTABLE",
-	"DUPTABLE",
-	"SETLIST",
-	"FORNPREP",
-	"FORNLOOP",
-	"FORGLOOP",
-	"FORGPREP_INEXT",
-	"FORGLOOP_INEXT",
-	"FORGPREP_NEXT",
-	"FORGLOOP_NEXT",
-	"GETVARARGS",
-	"DUPCLOSURE",
-	"PREPVARARGS",
-	"LOADKX",
-	"JUMPX",
-	"FASTCALL",
-	"COVERAGE",
-	"CAPTURE",
-	"JUMPIFEQK",
-	"JUMPIFNOEQK",
-	"FASTCALL1",
-	"FASTCALL2",
-	"FASTCALL2K",
-	"FORGPREP",
-	"JUMPXEQKNIL",
-	"JUMPXEQKB",
-	"JUMPXEQKN",
-	"JUMPXEQKS"
-};
-local op_list = {
-	LOADNIL = "A",
-	LOADB = "ABC",
-	LOADN = "A",
-	LOADK = "AD",
-	MOVE = "AB",
-	GETGLOBAL = "A",
-	SETGLOBAL = "A",
-	GETUPVALUE = "AB",
-	SETUPVALUE = "AB",
-	CLOSEUPVALUES = "A",
-	GETIMPORT = "AD",
-	GETTABLE = "ABC",
-	SETTABLE = "ABC",
-	GETTABLEKEY = "AB",
-	SETTABLEKEY = "AB",
-	GETTABLEINDEX = "AB",
-	SETTABLEINDEX = "AB",
-	NEWCLOSURE = "AD",
-	NAMECALL = "AB",
-	CALL = "ABC",
-	RETURN = "AB",
-	JUMP = "AD",
-	JUMPBACK = "AD",
-	JUMPIF = "AD",
-	JUMPIFNOT = "AD",
-	JUMPIFEQ = "AD",
-	JUMPIFLE = "AD",
-	JUMPIFLT = "AD",
-	JUMPIFNOTEQ = "AD",
-	JUMPIFNOTLE = "AD",
-	JUMPIFNOTLT = "AD",
-	ADD = "ABC",
-	SUB = "ABC",
-	MUL = "ABC",
-	DIV = "ABC",
-	MOD = "ABC",
-	POW = "ABC",
-	ADDK = "ABC",
-	SUBK = "ABC",
-	MULK = "ABC",
-	DIVK = "ABC",
-	MODK = "ABC",
-	POWK = "ABC",
-	AND = "ABC",
-	OR = "ABC",
-	ANDK = "ABC",
-	ORK = "ABC",
-	CONCAT = "ABC",
-	NOT = "AB",
-	MINUS = "AB",
-	LENGTH = "AB",
-	NEWTABLE = "A",
-	DUPTABLE = "AD",
-	SETLIST = "ABC",
-	FORNPREP = "AD",
-	FORNLOOP = "AD",
-	FORGLOOP = "AD",
-	FORGPREP_INEXT = "AD",
-	FORGLOOP_INEXT = "AD",
-	FORGPREP_NEXT = "AD",
-	FORGLOOP_NEXT = "AD",
-	GETVARARGS = "AB",
-	DUPCLOSURE = "AD",
-	PREPVARARGS = "A",
-	LOADKX = "ABC",
-	JUMPX = "AE",
-	JUMPXEQKNIL = "AE",
-	JUMPXEQKB = "AE",
-	JUMPXEQKN = "AE",
-	JUMPXEQKS = "AE",
-	FASTCALL = "A",
-	CAPTURE = "AB",
-	JUMPIFK = "AD",
-	JUMPIFNOTK = "AD",
-	FASTCALL1 = "ABC",
-	FASTCALL2 = "ABC",
-	FASTCALL2K = "ABC",
-	COVERAGE = "ABC",
-	NOP = "ABC",
-	BREAK = "ABC"
-};
-local function deserializer_fail(msg)
-	error(msg .. " Incorrect Version Provided", 0);
-end;
 local function luau_newmodule()
 	local m = {};
 	m.slist = {};
@@ -182,8 +14,171 @@ local function luau_newproto()
 end;
 local function luau_deserialize(chunk)
 	local position = 1;
-	local module = luau_newmodule();
-	local readproto;
+	local op_names = {
+		[0] = "NOP",
+		"BREAK",
+		"LOADNIL",
+		"LOADB",
+		"LOADN",
+		"LOADK",
+		"MOVE",
+		"GETGLOBAL",
+		"SETGLOBAL",
+		"GETUPVAL",
+		"SETUPVAL",
+		"CLOSEUPVALS",
+		"GETIMPORT",
+		"GETTABLE",
+		"SETTABLE",
+		"GETTABLEKS",
+		"SETTABLEKS",
+		"GETTABLEN",
+		"SETTABLEN",
+		"NEWCLOSURE",
+		"NAMECALL",
+		"CALL",
+		"RETURN",
+		"JUMP",
+		"JUMPBACK",
+		"JUMPIF",
+		"JUMPIFNOT",
+		"JUMPIFEQ",
+		"JUMPIFLE",
+		"JUMPIFLT",
+		"JUMPIFNOTEQ",
+		"JUMPIFNOTLE",
+		"JUMPIFNOTLT",
+		"ADD",
+		"SUB",
+		"MUL",
+		"DIV",
+		"MOD",
+		"POW",
+		"ADDK",
+		"SUBK",
+		"MULK",
+		"DIVK",
+		"MODK",
+		"POWK",
+		"AND",
+		"OR",
+		"ANDK",
+		"ORK",
+		"CONCAT",
+		"NOT",
+		"MINUS",
+		"LENGTH",
+		"NEWTABLE",
+		"DUPTABLE",
+		"SETLIST",
+		"FORNPREP",
+		"FORNLOOP",
+		"FORGLOOP",
+		"FORGPREP_INEXT",
+		"FORGLOOP_INEXT",
+		"FORGPREP_NEXT",
+		"FORGLOOP_NEXT",
+		"GETVARARGS",
+		"DUPCLOSURE",
+		"PREPVARARGS",
+		"LOADKX",
+		"JUMPX",
+		"FASTCALL",
+		"COVERAGE",
+		"CAPTURE",
+		"JUMPIFEQK",
+		"JUMPIFNOEQK",
+		"FASTCALL1",
+		"FASTCALL2",
+		"FASTCALL2K",
+		"FORGPREP",
+		"JUMPXEQKNIL",
+		"JUMPXEQKB",
+		"JUMPXEQKN",
+		"JUMPXEQKS"
+	};
+	local op_list = {
+		LOADNIL = "A",
+		LOADB = "ABC",
+		LOADN = "A",
+		LOADK = "AD",
+		MOVE = "AB",
+		GETGLOBAL = "A",
+		SETGLOBAL = "A",
+		GETUPVALUE = "AB",
+		SETUPVALUE = "AB",
+		CLOSEUPVALUES = "A",
+		GETIMPORT = "AD",
+		GETTABLE = "ABC",
+		SETTABLE = "ABC",
+		GETTABLEKEY = "AB",
+		SETTABLEKEY = "AB",
+		GETTABLEINDEX = "AB",
+		SETTABLEINDEX = "AB",
+		NEWCLOSURE = "AD",
+		NAMECALL = "AB",
+		CALL = "ABC",
+		RETURN = "AB",
+		JUMP = "AD",
+		JUMPBACK = "AD",
+		JUMPIF = "AD",
+		JUMPIFNOT = "AD",
+		JUMPIFEQ = "AD",
+		JUMPIFLE = "AD",
+		JUMPIFLT = "AD",
+		JUMPIFNOTEQ = "AD",
+		JUMPIFNOTLE = "AD",
+		JUMPIFNOTLT = "AD",
+		ADD = "ABC",
+		SUB = "ABC",
+		MUL = "ABC",
+		DIV = "ABC",
+		MOD = "ABC",
+		POW = "ABC",
+		ADDK = "ABC",
+		SUBK = "ABC",
+		MULK = "ABC",
+		DIVK = "ABC",
+		MODK = "ABC",
+		POWK = "ABC",
+		AND = "ABC",
+		OR = "ABC",
+		ANDK = "ABC",
+		ORK = "ABC",
+		CONCAT = "ABC",
+		NOT = "AB",
+		MINUS = "AB",
+		LENGTH = "AB",
+		NEWTABLE = "A",
+		DUPTABLE = "AD",
+		SETLIST = "ABC",
+		FORNPREP = "AD",
+		FORNLOOP = "AD",
+		FORGLOOP = "AD",
+		FORGPREP_INEXT = "AD",
+		FORGLOOP_INEXT = "AD",
+		FORGPREP_NEXT = "AD",
+		FORGLOOP_NEXT = "AD",
+		GETVARARGS = "AB",
+		DUPCLOSURE = "AD",
+		PREPVARARGS = "A",
+		LOADKX = "ABC",
+		JUMPX = "AE",
+		JUMPXEQKNIL = "AE",
+		JUMPXEQKB = "AE",
+		JUMPXEQKN = "AE",
+		JUMPXEQKS = "AE",
+		FASTCALL = "A",
+		CAPTURE = "AB",
+		JUMPIFK = "AD",
+		JUMPIFNOTK = "AD",
+		FASTCALL1 = "ABC",
+		FASTCALL2 = "ABC",
+		FASTCALL2K = "ABC",
+		COVERAGE = "ABC",
+		NOP = "ABC",
+		BREAK = "ABC"
+	};
 	local function read_byte()
 		local b = string.unpack(">B", chunk, position);
 		position = position + 1;
@@ -231,8 +226,10 @@ local function luau_deserialize(chunk)
 		for i = 1, p.sizecode do
 			local i = {};
 			i.value = read_integer();
-			i.opcode = op_names[bit32.band(i.value, 255)];
-			i.type = op_list[i.opcode];
+			i.opcode = bit32.band(i.value, 255);
+			i.opname = op_names[i.opcode];
+			print(i.opcode, i.opname);
+			i.type = op_list[i.opname];
 			if i.type == "ABC" then
 				i.A = bit32.band(bit32.rshift(i.value, 8), 255);
 				i.B = bit32.band(bit32.rshift(i.value, 16), 255);
@@ -314,8 +311,9 @@ local function luau_deserialize(chunk)
 	end;
 	local luauVersion = read_byte();
 	if luauVersion ~= 3 then
-		deserializer_fail("Fiu expected Luau bytecode!");
+		error("Incorrect Bytecode Provided", 0);
 	end;
+	local module = luau_newmodule();
 	local stringCount = read_variable_integer();
 	for i = 1, stringCount do
 		table.insert(module.slist, read_string());
@@ -327,14 +325,60 @@ local function luau_deserialize(chunk)
 	module.mainp = read_variable_integer();
 	return module;
 end;
-local function luau_wrapclosure(proto, env, upval)
-	local function vm_fail(pc, opcode_name, traceback)
-		error(string.format("Fiu VM Error PC: %s Opcode: %s: \n", pc, opcode_name) .. traceback, 0);
+local function luau_wrapclosure(module, proto, env, upval)
+	local function luau_execute(debugging, protos, code, varargs)
+		local top, pc, stack = -1, 1, {};
+		while true do
+			local inst = code[pc];
+			local op = inst.opcode;
+			pc = pc + 1;
+			debugging.pc = pc
+			debugging.name = inst.opname
+			if op == 5 then --[[ LOADK ]]
+				stack[inst.A] = module.slist[proto.k[inst.D+1].data]
+			elseif op == 12 then --[[ GETIMPORT ]]
+				pc = pc + 1;
+				local extend = code[pc].value;
+				local count = bit32.rshift(extend, 30);
+				local id0 = bit32.band(bit32.rshift(extend, 20), 1023);
+
+				--[[
+                    uint id0 = (extend >> 20) & 0x3FF;
+                    uint id1 = (extend >> 10) & 0x3FF;
+                    uint id2 = (extend >> 00) & 0x3FF;
+				]]
+				if count == 0 then
+					stack[inst.A] = env[module.slist[proto.k[id0+1].data]]
+				elseif count == 1 then -- NYI
+				elseif count == 2 then -- NYI
+				end;
+			elseif op == 21 then 
+				local A,B,C = inst.A, inst.B, inst.C
+
+				local params = if B == 0 then top - A else B - 1
+				local ret_list = table.pack(stack[A](table.unpack(stack, A + 1, A + params)))
+				local ret_num = ret_list.n
+
+				if C == 0 then
+					top_index = A + ret_num - 1
+				else
+					ret_num = C - 1
+				end
+
+				table.move(ret_list, 1, ret_num, A, stack)
+			elseif op == 22 then  --[[ RETURN ]]
+				return
+			elseif op == 65 then --[[ PREPVARARGS ]]
+				local numparams = inst.A;
+				for i = 1, numparams do
+				end;
+			end;
+		end;
 	end;
 	local function wrapped(...)
 		local passed = table.pack(...);
-		local memory = table.create(proto.maxstacksize);
-		local vararg = {
+		local stack = table.create(proto.maxstacksize);
+		local varargs = {
 			len = 0,
 			list = {}
 		};
@@ -342,33 +386,30 @@ local function luau_wrapclosure(proto, env, upval)
 		if proto.numparams < passed.n then
 			local start = proto.numparams + 1;
 			local len = passed.n - proto.numparams;
-			vararg.len = len;
-			table.move(passed, start, start + len - 1, 1, vararg.list);
+			varargs.len = len;
+			table.move(passed, start, start + len - 1, 1, varargs.list);
 		end;
-		local state = {
-			vararg = vararg,
-			memory = memory,
-			code = proto.code,
-			protos = proto.p,
-			pc = 1
-		};
-		local result = table.pack(pcall(run_lua_func, state, env, upval));
+		local debugging = {}
+		local result = table.pack(pcall(luau_execute, debugging, protos, proto.code, varargs));
 		if result[1] then
 			return table.unpack(result, 2, result.n);
 		else
-			vm_fail(state.pc, proto.code[state.pc].opcode, result[2]);
-			return;
+			print("Outputted:::::::::::;", debugging.pc, debugging.name)
+			error(string.format("Fiu VM Error PC: %s Opcode: %s: \n%s", debugging.pc, debugging.name, result[2]), 0);
 		end;
 	end;
 	return wrapped;
 end;
 local function luau_load(module, env)
 	local proto = module.plist[module.mainp + 1];
-	return luau_wrapclosure(proto, env);
+	return luau_wrapclosure(module, proto, env);
 end;
 local chunk = luau_deserialize(Bytestring);
 (luau_load(chunk, getfenv()))();
 return {
 	luau_load = luau_load,
+	luau_newproto = luau_newproto,
+	luau_newmodule = luau_newmodule,
+	luau_deserialize = luau_deserialize,
 	luau_wrapclosure = luau_wrapclosure
 };

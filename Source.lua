@@ -20,7 +20,7 @@ AD - 4
 AE - 5 
 ]]
 local op_list = {
-	[0] = {"NOP", 0},
+	{"NOP", 0},
 	{"BREAK", 0},
 	{"LOADNIL", 1},
 	{"LOADB", 3},
@@ -116,15 +116,15 @@ local function luau_deserialize(bytecode)
 		return int
 	end
 	local function read_variable_integer()
-		local result = 0
-		for i = 0, 7 do
-			local value = read_byte()
-			result = bit32.bor(result, bit32.lshift(bit32.band(value, 0x7F), i * 7))
-			if bit32.band(value, 0x80) == 0 then
-				break
-			end
-		end
-		return result
+        local result = 0
+        for i = 0, 7 do
+            local value = read_byte()
+            result = bit32.bor(result, bit32.lshift(bit32.band(value, 0x7F), i * 7))
+            if bit32.band(value, 0x80) == 0 then
+                break
+            end
+        end
+        return result
 	end
 	local function read_string()
 		local size = read_variable_integer()
@@ -148,8 +148,9 @@ local function luau_deserialize(bytecode)
 			local i = {}
 			i.value = read_integer()
 			i.opcode = bit32.band(i.value, 0xFF)
-			local opcode = op_list[i.opcode]
+			local opcode = op_list[i.opcode+1]
 			i.opname = opcode[1]
+			print(i.opname, i.opcode)
 			i.type = opcode[2]
 			if i.type == 3 then --[[ ABC ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
@@ -266,23 +267,38 @@ local function luau_load(module, env)
 				pc = pc + 1
 				debugging.pc = pc
 				debugging.name = inst.opname
-				if op == 5 then --[[ LOADK ]]
+				if op == 2 then --[[ LOADNIL ]]
+					stack[inst.A] = nil
+				elseif op == 4 then --[[ LOADN ]]
+					stack[inst.A] = inst.D
+				elseif op == 5 then --[[ LOADK ]]
 					stack[inst.A] = stringsList[constants[inst.D + 1].data]
-				elseif op == 12 then --[[ GETIMPORT ]]
+				elseif op == 7 then --[[ GETGLOBAL ]]
+					local aux = code[pc].value
 					pc = pc + 1
+					local kv = constants[aux+1]
+					assert(kv.type == "string", "GETGLOBAL expected string constant")
+					stack[inst.A] = env[stringsList[kv.data]]
+				elseif op == 8 then --[[ SETGLOBAL ]]
+					local aux = code[pc].value
+					pc = pc + 1
+					local kv = constants[aux+1]
+					assert(kv.type == "string", "GETGLOBAL expected string constant")
+					env[stringsList[kv.data]] = stack[inst.A]
+				elseif op == 12 then --[[ GETIMPORT ]]
 					local extend = code[pc].value
+					pc = pc + 1
 					local count = bit32.rshift(extend, 30)
 					local id0 = bit32.band(bit32.rshift(extend, 20), 0x3FF)
-
 					--[[
                     uint id0 = (extend >> 20) & 0x3FF;
                     uint id1 = (extend >> 10) & 0x3FF;
                     uint id2 = (extend >> 00) & 0x3FF;
 					]]
-					if count == 0 then
+					if count == 1 then
 						stack[inst.A] = env[stringsList[constants[id0 + 1].data]]
-					elseif count == 1 then
 					elseif count == 2 then
+					elseif count == 3 then
 					end
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C

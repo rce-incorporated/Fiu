@@ -1,6 +1,6 @@
 local fiu = require("../Source")
 local tests = {
-	"DupTableSetList", "Globals", "Unary", "Tables", "LOADNIL", "LOADN", "HelloWorld", "Concat", "Arit", "AritK", "AndOr", "AndOrK"
+	"Conditions"	
 }
 
 for i,v in tests do 

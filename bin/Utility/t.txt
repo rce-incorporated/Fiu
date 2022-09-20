@@ -1,11 +1,18 @@
-local a = {
-  a = 1,
-  b = 2,
-  c = 3,
-}
+if math == math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math ~= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math >= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math >  math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math <  math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math <= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
+if math >= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
 
-local c = {
-	a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a
-}
+print"Move on along"
 
-print(a,c,#a,#c)
+if math == false then
+	print"Yes;"
+end
+if math == nil then
+	print"so na von mir"
+end
+print"hhh"
+

@@ -254,6 +254,7 @@ local function luau_load(module, env)
 	if type(module) == "string" then
 		module = luau_deserialize(module)
 	end
+	print"-------------------"
 
 	local mainProto = module.plist[module.mainp + 1]
 	local function luau_wrapclosure(module, proto, upval)
@@ -267,6 +268,7 @@ local function luau_load(module, env)
 
 			while true do
 				local inst = code[pc]
+				print(pc, op_list[inst.opcode+1][1])
 				local op = inst.opcode
 				pc += 1
 				debugging.pc = pc
@@ -352,8 +354,11 @@ local function luau_load(module, env)
 					end
 
 					return table.unpack(stack, A, A + nresults - 1)
-				elseif op == 24 then --[[ JUMPBACK ]]
+				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
+				elseif op == 24 then --[[ JUMPBACK ]]
+					--[[ HELP, what is VM_INTERRUPT ]]
+					pc += inst.D 
 				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
 					local aux = code[pc].value
 					if stack[inst.A] ~= stack[aux] then
@@ -456,7 +461,6 @@ local function luau_load(module, env)
 
 					if c == LUA_MULTRET then
 						c = top - B
-						-- what is the new top confusion?
 					end
 
 					local index = code[pc].value
@@ -478,9 +482,19 @@ local function luau_load(module, env)
 					pc += 1
 					--[[ Skipped ]]
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
-					--[[ Add these when I wake up ]]
+					local aux = code[pc].value
+					if ra == nil and 0 or 1 == bit32.rshift(aux, 31) then
+						pc += inst.D 
+					else 
+						pc += 1
+					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
-					--[[ Add these when I wake up ]]
+					local aux = code[pc].value
+					if ra == nil and 0 or 1 == bit32.rshift(aux, 31) then
+						pc += inst.D 
+					else 
+						pc += 1
+					end
 				elseif op == 79 then --[[ JUMPXEQKN ]]
 					local aux = code[pc].value
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
@@ -488,13 +502,15 @@ local function luau_load(module, env)
 					kv = kv.data
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
-						pc += if A ~= kv then inst.D else 1
-					else
 						pc += if A == kv then inst.D else 1
+					else
+						pc += if A ~= kv then inst.D else 1
 					end
 				else
 					error("Unsupported Opcode: " .. inst.opname)
 				end
+
+				print("New PC: ", pc)
 			end
 		end
 		local function wrapped(...)

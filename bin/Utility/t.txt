@@ -1,18 +1,1 @@
-if math == math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math ~= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math >= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math >  math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math <  math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math <= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-if math >= math.floor(1) then a += 1 print("ye", a) else return "Nah", a end
-
-print"Move on along"
-
-if math == false then
-	print"Yes;"
-end
-if math == nil then
-	print"so na von mir"
-end
-print"hhh"
-
+print(`Hello`)

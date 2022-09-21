@@ -1,6 +1,6 @@
 local fiu = require("../Source")
 local tests = {
-	"Globals"	
+	"BasicJump"	
 }
 
 for i,v in tests do 

@@ -490,7 +490,7 @@ local function luau_load(module, env)
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = code[pc].value
-					if ra == nil and 0 or 1 == bit32.rshift(aux, 31) then
+					if (ra and 0 or 1 == bit32.band(aux, 1) and 0 or 1) == bit32.rshift(aux, 31) then
 						pc += inst.D 
 					else 
 						pc += 1

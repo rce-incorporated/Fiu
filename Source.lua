@@ -357,7 +357,7 @@ local function luau_load(module, env)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
-					--[[ HELP, what is VM_INTERRUPT ]]
+					--[[ Issue here is this jumps way too far ]]
 					pc += inst.D 
 				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
 					local aux = code[pc].value

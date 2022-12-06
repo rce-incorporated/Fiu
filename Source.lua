@@ -151,7 +151,6 @@ local function luau_deserialize(bytecode)
 			i.opcode = bit32.band(i.value, 0xFF)
 			local opcode = op_list[i.opcode + 1]
 			i.opname = opcode[1]
-			print(i.opname, i.opcode)
 			i.type = opcode[2]
 			if i.type == 3 then --[[ ABC ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
@@ -254,7 +253,6 @@ local function luau_load(module, env)
 	if type(module) == "string" then
 		module = luau_deserialize(module)
 	end
-	print"-------------------"
 
 	local mainProto = module.plist[module.mainp + 1]
 	local function luau_wrapclosure(module, proto, upval)
@@ -268,7 +266,6 @@ local function luau_load(module, env)
 
 			while true do
 				local inst = code[pc]
-				print(pc, op_list[inst.opcode+1][1])
 				local op = inst.opcode
 				pc += 1
 				debugging.pc = pc
@@ -490,7 +487,7 @@ local function luau_load(module, env)
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = code[pc].value
-					if (ra and 0 or 1 == bit32.band(aux, 1) and 0 or 1) == bit32.rshift(aux, 31) then
+					if ((ra and 0 or 1 == bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
 						pc += inst.D 
 					else 
 						pc += 1
@@ -509,8 +506,6 @@ local function luau_load(module, env)
 				else
 					error("Unsupported Opcode: " .. inst.opname)
 				end
-
-				print("New PC: ", pc)
 			end
 		end
 		local function wrapped(...)

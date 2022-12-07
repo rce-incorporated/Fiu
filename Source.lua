@@ -4,6 +4,7 @@ local function luau_newmodule()
 		plist = {},
 	}
 end
+
 local function luau_newproto()
 	return {
 		code = {},
@@ -11,6 +12,7 @@ local function luau_newproto()
 		protos = {},
 	}
 end
+
 --[[
 NOP/REMOVED - 0
 A - 1
@@ -102,20 +104,24 @@ local op_list = {
 	{ "JUMPXEQKN", 4, true },
 	{ "JUMPXEQKS", 4, true },
 }
+
 local LUA_MULTRET = -1
 local function luau_deserialize(bytecode)
 	local position = 1
 	local module = luau_newmodule()
+
 	local function read_byte()
 		local b = string.unpack(">B", bytecode, position)
 		position = position + 1
 		return b
 	end
+
 	local function read_integer()
 		local int = string.unpack("I4", bytecode, position)
 		position = position + 4
 		return int
 	end
+
 	local function read_variable_integer()
 		local result = 0
 		for i = 0, 7 do
@@ -127,6 +133,7 @@ local function luau_deserialize(bytecode)
 		end
 		return result
 	end
+
 	local function read_string()
 		local size = read_variable_integer()
 		local str
@@ -138,12 +145,14 @@ local function luau_deserialize(bytecode)
 		end
 		return str
 	end
+
 	local function readproto()
 		local p = luau_newproto()
 		p.maxstacksize = read_byte()
 		p.numparams = read_byte()
 		p.nups = read_byte()
 		p.isvararg = read_byte() ~= 0
+
 		p.sizecode = read_variable_integer()
 		for i = 1, p.sizecode do
 			local i = {}
@@ -171,6 +180,7 @@ local function luau_deserialize(bytecode)
 			end
 			table.insert(p.code, i)
 		end
+
 		p.sizek = read_variable_integer()
 		for i = 1, p.sizek do
 			local kt = read_byte()
@@ -206,12 +216,15 @@ local function luau_deserialize(bytecode)
 			end
 			table.insert(p.k, k)
 		end
+
 		p.sizep = read_variable_integer()
 		for i = 1, p.sizep do
 			table.insert(p.protos, read_variable_integer())
 		end
+
 		read_variable_integer()
 		read_variable_integer()
+
 		if read_byte() ~= 0 then
 			local lineGap = read_byte()
 			for i = 1, p.sizecode do
@@ -222,6 +235,7 @@ local function luau_deserialize(bytecode)
 				read_integer()
 			end
 		end
+
 		if read_byte() ~= 0 then
 			local sizel = read_variable_integer()
 			for i = 1, sizel do
@@ -231,22 +245,28 @@ local function luau_deserialize(bytecode)
 				read_byte()
 			end
 		end
+
 		return p
 	end
+
 	local luauVersion = read_byte()
 	if luauVersion ~= 3 then
 		error("Incorrect Bytecode Provided", 0)
 	end
+
 	local stringCount = read_variable_integer()
 	for i = 1, stringCount do
 		table.insert(module.slist, read_string())
 	end
+
 	local protoCount = read_variable_integer()
 	for i = 1, protoCount do
 		table.insert(module.plist, readproto())
 	end
+
 	module.mainp = read_variable_integer()
-	assert(position == #bytecode + 1, "Deserializer Position Mismatch")
+	assert(position == #bytecode + 1, "Deserializer position mismatch")
+
 	return module
 end
 local function luau_load(module, env)
@@ -305,7 +325,7 @@ local function luau_load(module, env)
 						if uv.index >= inst.A then
 							uv.value = uv.store[uv.index]
 							uv.store = uv
-							uv.index = 'value' --// self reference
+							uv.index = "value" --// self reference
 							open_upvalues[i] = nil
 						end
 					end
@@ -349,7 +369,7 @@ local function luau_load(module, env)
 						local pseudo = code[pc]
 						local cop = pseudo.opcode
 
-						pc += 1 
+						pc += 1
 
 						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
 
@@ -363,8 +383,8 @@ local function luau_load(module, env)
 
 							if prev == nil then
 								prev = {
-									index = index, 
-									store = stack
+									index = index,
+									store = stack,
 								}
 								open_upvalues[index] = prev
 							end
@@ -373,7 +393,7 @@ local function luau_load(module, env)
 						elseif type == 2 then -- upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
-					end 
+					end
 
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 				elseif op == 20 then --[[ NAMECALL ]]
@@ -391,7 +411,7 @@ local function luau_load(module, env)
 
 					local params = if B == 0 then top - A else B - 1
 					local ret_list = table.pack(stack[A](table.unpack(stack, A + 1, A + params)))
-					
+
 					local ret_num = ret_list.n
 
 					if C == 0 then
@@ -479,28 +499,28 @@ local function luau_load(module, env)
 					stack[inst.A] = stack[inst.B] ^ constants[inst.C + 1].data
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
-					if (not not value) == false then
+					if not not value == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 46 then --[[ OR ]]
 					local value = stack[inst.B]
-					if (not not value) == true then
+					if not not value == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 47 then --[[ ANDK ]]
 					local value = stack[inst.B]
-					if (not not value) == false then
+					if not not value == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1].data or false
 					end
 				elseif op == 48 then --[[ ORK ]]
 					local value = stack[inst.B]
-					if (not not value) == true then
+					if not not value == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1].data or false
@@ -543,77 +563,87 @@ local function luau_load(module, env)
 				elseif op == 56 then --[[ FORNPREP ]]
 					local A = inst.A
 					local limit = stack[A]
-					if type(limit) ~= "number" then 
+					if type(limit) ~= "number" then
 						local number = tonumber(limit)
 
-						if number == nil then 
+						if number == nil then
 							error("invalid 'for' limit (number expected)")
-						end 
-					end 
+						end
+					end
 					local step = stack[A + 1]
-					if type(step) ~= "number" then 
+					if type(step) ~= "number" then
 						local number = tonumber(step)
 
-						if number == nil then 
+						if number == nil then
 							error("invalid 'for' step (number expected)")
-						end 
-					end 
+						end
+					end
 					local index = stack[A + 1]
-					if type(index) ~= "number" then 
+					if type(index) ~= "number" then
 						local number = tonumber(index)
 
-						if number == nil then 
+						if number == nil then
 							error("invalid 'for' index (number expected)")
-						end 
-					end 
+						end
+					end
 
-					if step > 0 then 
-						if index >= limit then 
+					if step > 0 then
+						if index >= limit then
 							pc += inst.D
 						end
-					else 
-						if limit >= index then 
+					else
+						if limit >= index then
 							pc += inst.D
-						end 
-					end 
+						end
+					end
 				elseif op == 57 then --[[ FORNLOOP ]]
 					local limit = stack[inst.A]
 					local step = stack[inst.A + 1]
-					local index = stack[inst.A + 2] + step 
+					local index = stack[inst.A + 2] + step
 
 					stack[inst.A + 2] = index
 
-					if step > 0 then 
-						if index <= limit then 
+					if step > 0 then
+						if index <= limit then
 							pc += inst.D
 						end
-					else 
-						if limit <= index then 
+					else
+						if limit <= index then
 							pc += inst.D
-						end 
-					end 
+						end
+					end
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
 					local aux = code[pc].value
 
 					top = A + 6
 
-					local vals = {stack[A](stack[A + 1], stack[A + 2])}
+					local vals = { stack[A](stack[A + 1], stack[A + 2]) }
 
 					table.move(vals, 1, aux, A + 3, stack)
 
 					if stack[A + 3] ~= nil then
 						stack[A + 2] = stack[A + 3]
 						pc += inst.D
-					else 
+					else
 						pc += 1
 					end
 				elseif op == 61 then --[[ FORGPREP_NEXT ]]
-					if type(stack[inst.A]) ~= "function" then 
+					if type(stack[inst.A]) ~= "function" then
 						error("Attempt to iterate over non-function value")
-					end 
+					end
 
-					pc += inst.D					
+					pc += inst.D
+				elseif op == 63 then --[[ GETVARARGS ]]
+					local A = inst.A
+					local b = inst.B - 1
+
+					if b == LUA_MULTRET then
+						b = varargs.len
+						top = A + b - 1
+					end
+
+					table.move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local newPrototype = module.plist[constants[inst.D + 1].data + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
@@ -623,7 +653,7 @@ local function luau_load(module, env)
 						local pseudo = code[pc]
 						local cop = pseudo.opcode
 
-						pc += 1 
+						pc += 1
 
 						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
 
@@ -635,14 +665,11 @@ local function luau_load(module, env)
 						elseif type == 2 then -- upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
-					end 
+					end
 
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 				elseif op == 65 then --[[ PREPVARARGS ]]
-					local numparams = inst.A
-					for i = 1, numparams do
-						error("Not added")
-					end
+					--[[ Handled by wrapper ]]
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
 				elseif op == 70 then --[[ CAPTURE ]]
@@ -657,15 +684,15 @@ local function luau_load(module, env)
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
 					local aux = code[pc].value
 					if (ra == nil and 0 or 1) == bit32.rshift(aux, 31) then
-						pc += inst.D 
-					else 
+						pc += inst.D
+					else
 						pc += 1
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = code[pc].value
 					if ((ra and 0 or 1) == (bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
-						pc += inst.D 
-					else 
+						pc += inst.D
+					else
 						pc += 1
 					end
 				elseif op == 79 then --[[ JUMPXEQKN ]]
@@ -690,13 +717,16 @@ local function luau_load(module, env)
 				len = 0,
 				list = {},
 			}
+
 			table.move(passed, 1, proto.numparams, 0, stack)
+
 			if proto.numparams < passed.n then
 				local start = proto.numparams + 1
 				local len = passed.n - proto.numparams
 				varargs.len = len
 				table.move(passed, start, start + len - 1, 1, varargs.list)
 			end
+
 			local debugging = {}
 			local result
 			if false then -- for debugging issues
@@ -704,6 +734,7 @@ local function luau_load(module, env)
 			else
 				result = table.pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
 			end
+
 			if result[1] then
 				return table.unpack(result, 2, result.n)
 			else

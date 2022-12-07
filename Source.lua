@@ -452,6 +452,20 @@ local function luau_load(module, env)
 					else
 						pc += 1
 					end
+				elseif op == 28 then --[[ JUMPIFLE ]]
+					local aux = code[pc].value
+					if stack[inst.A] < stack[aux] then
+						pc += inst.D
+					else
+						pc += 1
+					end
+				elseif op == 29 then --[[ JUMPIFLT ]]
+					local aux = code[pc].value
+					if stack[inst.A] <= stack[aux] then
+						pc += inst.D
+					else
+						pc += 1
+					end
 				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
 					local aux = code[pc].value
 					if stack[inst.A] == stack[aux] then
@@ -569,6 +583,8 @@ local function luau_load(module, env)
 						if number == nil then
 							error("invalid 'for' limit (number expected)")
 						end
+
+						stack[A] = number
 					end
 					local step = stack[A + 1]
 					if type(step) ~= "number" then
@@ -577,14 +593,18 @@ local function luau_load(module, env)
 						if number == nil then
 							error("invalid 'for' step (number expected)")
 						end
+
+						stack[A + 1] = number
 					end
-					local index = stack[A + 1]
+					local index = stack[A + 2]
 					if type(index) ~= "number" then
 						local number = tonumber(index)
 
 						if number == nil then
 							error("invalid 'for' index (number expected)")
 						end
+
+						stack[A + 2] = number
 					end
 
 					if step > 0 then

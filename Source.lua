@@ -255,10 +255,35 @@ local function luau_load(module, env)
 	end
 
 	local mainProto = module.plist[module.mainp + 1]
-	local function luau_wrapclosure(module, proto, upval)
+	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, protos, code, varargs)
-			local top, pc, stack = -1, 1, {}
+			local top, pc, stack, open_upvalues = -1, 1, {}, {}
 			local constants = proto.k
+
+			local function open_upvalue(index)
+				local prev = open_upvalues[index]
+
+				if prev == nil then
+					prev = {
+						index = index, 
+						store = stack
+					}
+					open_upvalues[index] = prev
+				end
+
+				return prev
+			end
+
+			local function close_upvalues(index)
+				for i, uv in pairs(open_upvalues) do
+					if uv.index >= index then
+						uv.value = uv.store[uv.index] -- store value
+						uv.store = uv
+						uv.index = 'value' -- self reference
+						open_upvalues[i] = nil
+					end
+				end
+			end
 
 			local function vm_kv(index)
 				return constants[index + 1].data
@@ -294,8 +319,14 @@ local function luau_load(module, env)
 					local kv = constants[aux + 1]
 					assert(kv.type == "string", "GETGLOBAL expected string constant!")
 					env[kv.data] = stack[inst.A]
+				elseif op == 9 then --[[ GETUPVAL ]]
+					local uv = upvals[inst.B + 1]
+					stack[inst.A] = uv.store[uv.index]
+				elseif op == 10 then --[[ SETUPVAL ]]
+					local uv = upvals[inst.B + 1]
+					uv.store[uv.index] = stack[inst.A]
 				elseif op == 11 then --[[ CLOSEUPVALS ]]
-
+					close_upvalues(inst.A)
 				elseif op == 12 then --[[ GETIMPORT ]]
 					local extend = code[pc].value
 					pc += 1
@@ -328,7 +359,30 @@ local function luau_load(module, env)
 				elseif op == 18 then --[[ SETTABLEN ]]
 					stack[inst.B][inst.C] = stack[inst.A]
 				elseif op == 19 then --[[ NEWCLOSURE ]]
+					local newPrototype = module.plist[inst.D + 1]
 
+					local upvalues = {}
+
+					for i = 1, newPrototype.nups do
+						local pseudo = code[pc]
+						local cop = pseudo.opcode
+
+						pc += 1 
+
+						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
+
+						local type = pseudo.A
+
+						if type == 0 then -- value
+							upvalues[i] = stack[pseudo.B]
+						elseif type == 1 then -- reference
+							upvalues[i] = open_upvalue(pseudo.B)
+						elseif type == 2 then -- upvalue
+							upvalues[i] = upvals[pseudo.B]
+						end
+					end 
+
+					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
@@ -475,7 +529,29 @@ local function luau_load(module, env)
 
 					table.move(stack, A + 1, A + c, index, stack[A])
 				elseif op == 64 then --[[ DUPCLOSURE ]]
+					local newPrototype = module.plist[constants[inst.D + 1].data + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
+					local upvalues = {}
+
+					for i = 1, newPrototype.nups do
+						local pseudo = code[pc]
+						local cop = pseudo.opcode
+
+						pc += 1 
+
+						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
+
+						local type = pseudo.A
+
+						if type == 0 then -- value
+							upvalues[i] = stack[pseudo.B]
+						--// references dont get handled by DUPCLOSURE
+						elseif type == 2 then -- upvalue
+							upvalues[i] = upvals[pseudo.B]
+						end
+					end 
+
+					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					local numparams = inst.A
 					for i = 1, numparams do
@@ -483,14 +559,13 @@ local function luau_load(module, env)
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
 				elseif op == 70 then --[[ CAPTURE ]]
-
+					--[[ Handled by CLOSURE ]]
+					error("Unhandled CAPTURE")
 				elseif op == 73 then --[[ FASTCALL1 ]]
 					--[[ Skipped ]]
 				elseif op == 74 then --[[ FASTCALL2 ]]
-					pc += 1
 					--[[ Skipped ]]
 				elseif op == 75 then --[[ FASTCALL2K ]]
-					pc += 1
 					--[[ Skipped ]]
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
 					local aux = code[pc].value

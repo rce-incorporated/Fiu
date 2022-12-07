@@ -1,13 +1,15 @@
 local fiu = require("../Source")
 local allTests = {
 	"AndOr", "AndOrK", "Arit", "AritK", "Booleans", "Concat", "DupTableSetList", "GetImportSpecial", "Globals", "HelloWorld",
-	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions"
+	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions", "WhileRepeat"
 
 	-- "WhileRepeat", "WhileTrueDo", "BasicJump",  > not implemented
+
+	-- Optional Tests: "GetImportSpecial", "WhileTrueDo"
 }
 
 local specificTests = {
-	"WhileRepeat"
+	"Closure"
 }
 
 for i,v in specificTests do

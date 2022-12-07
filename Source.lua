@@ -163,10 +163,10 @@ local function luau_deserialize(bytecode)
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
 			elseif i.type == 4 then --[[ AD ]]
 				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-				local temp = bit32.band(bit32.rshift(i.value, 16), 0xFF)
+				local temp = bit32.band(bit32.rshift(i.value, 16), 0xFFFF)
 				i.D = if temp < 0x8000 then temp else temp - 0x10000
 			elseif i.type == 5 then --[[ AE ]]
-				local temp = bit32.band(bit32.rshift(i.value, 8), 0xFF)
+				local temp = bit32.band(bit32.rshift(i.value, 8), 0xFFFFFF)
 				i.E = if temp < 0x800000 then temp else temp - 0x1000000
 			end
 			table.insert(p.code, i)
@@ -294,6 +294,8 @@ local function luau_load(module, env)
 					local kv = constants[aux + 1]
 					assert(kv.type == "string", "GETGLOBAL expected string constant!")
 					env[kv.data] = stack[inst.A]
+				elseif op == 11 then --[[ CLOSEUPVALS ]]
+
 				elseif op == 12 then --[[ GETIMPORT ]]
 					local extend = code[pc].value
 					pc += 1
@@ -325,6 +327,8 @@ local function luau_load(module, env)
 					stack[inst.A] = stack[inst.B][inst.C]
 				elseif op == 18 then --[[ SETTABLEN ]]
 					stack[inst.B][inst.C] = stack[inst.A]
+				elseif op == 19 then --[[ NEWCLOSURE ]]
+
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
@@ -354,7 +358,7 @@ local function luau_load(module, env)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
-					print(inst.D)
+					pc += inst.D
 				elseif op == 27 then --[[ JUMPIFEQ ]]
 					local aux = code[pc].value
 					if stack[inst.A] == stack[aux] then
@@ -470,12 +474,16 @@ local function luau_load(module, env)
 					pc += 1
 
 					table.move(stack, A + 1, A + c, index, stack[A])
+				elseif op == 64 then --[[ DUPCLOSURE ]]
+
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					local numparams = inst.A
 					for i = 1, numparams do
 					end
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
+				elseif op == 70 then --[[ CAPTURE ]]
+
 				elseif op == 73 then --[[ FASTCALL1 ]]
 					--[[ Skipped ]]
 				elseif op == 74 then --[[ FASTCALL2 ]]
@@ -529,7 +537,7 @@ local function luau_load(module, env)
 			end
 			local debugging = {}
 			local result
-			if false then
+			if false then -- for debugging issues
 				result = table.pack(pcall(luau_execute, debugging, proto.protos, proto.code, varargs))
 			else
 				result = table.pack(true, luau_execute(debugging, proto.protos, proto.code, varargs))

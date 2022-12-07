@@ -3,11 +3,12 @@ local allTests = {
 	"AndOr", "AndOrK", "Arit", "AritK", "Booleans", "Concat", "DupTableSetList", "GetImportSpecial", "Globals", "HelloWorld",
 	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions", "WhileRepeat", "BasicJump", "Closure"
 
+	-- Not fully working tests: "ForLoops"
 	-- Optional Tests: "GetImportSpecial", "WhileTrueDo"
 }
 
 local specificTests = {
-	
+	"ForLoops"
 }
 
 for i,v in specificTests do

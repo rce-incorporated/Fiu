@@ -81,7 +81,7 @@ local op_list = {
 	{ "FORGLOOP", 4, true },
 	{ "FORGPREP_INEXT", 1 },
 	{ "LOP_DEP_FORGLOOP_INEXT", 0 },
-	{ "FORGPREP_NEXT", 1 },
+	{ "FORGPREP_NEXT", 4 },
 	{ "LOP_DEP_FORGLOOP_NEXT", 0 },
 	{ "GETVARARGS", 2 },
 	{ "DUPCLOSURE", 4 },
@@ -260,31 +260,6 @@ local function luau_load(module, env)
 			local top, pc, stack, open_upvalues = -1, 1, {}, {}
 			local constants = proto.k
 
-			local function open_upvalue(index)
-				local prev = open_upvalues[index]
-
-				if prev == nil then
-					prev = {
-						index = index, 
-						store = stack
-					}
-					open_upvalues[index] = prev
-				end
-
-				return prev
-			end
-
-			local function close_upvalues(index)
-				for i, uv in pairs(open_upvalues) do
-					if uv.index >= index then
-						uv.value = uv.store[uv.index] -- store value
-						uv.store = uv
-						uv.index = 'value' -- self reference
-						open_upvalues[i] = nil
-					end
-				end
-			end
-
 			local function vm_kv(index)
 				return constants[index + 1].data
 			end
@@ -326,7 +301,14 @@ local function luau_load(module, env)
 					local uv = upvals[inst.B + 1]
 					uv.store[uv.index] = stack[inst.A]
 				elseif op == 11 then --[[ CLOSEUPVALS ]]
-					close_upvalues(inst.A)
+					for i, uv in pairs(open_upvalues) do
+						if uv.index >= inst.A then
+							uv.value = uv.store[uv.index]
+							uv.store = uv
+							uv.index = 'value' --// self reference
+							open_upvalues[i] = nil
+						end
+					end
 				elseif op == 12 then --[[ GETIMPORT ]]
 					local extend = code[pc].value
 					pc += 1
@@ -376,7 +358,18 @@ local function luau_load(module, env)
 						if type == 0 then -- value
 							upvalues[i] = stack[pseudo.B]
 						elseif type == 1 then -- reference
-							upvalues[i] = open_upvalue(pseudo.B)
+							local index = pseudo.B
+							local prev = open_upvalues[index]
+
+							if prev == nil then
+								prev = {
+									index = index, 
+									store = stack
+								}
+								open_upvalues[index] = prev
+							end
+
+							upvalues[i] = prev
 						elseif type == 2 then -- upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
@@ -528,6 +521,80 @@ local function luau_load(module, env)
 					pc += 1
 
 					table.move(stack, A + 1, A + c, index, stack[A])
+				elseif op == 56 then --[[ FORNPREP ]]
+					local A = inst.A
+					local limit = stack[A]
+					if type(limit) ~= "number" then 
+						local number = tonumber(limit)
+
+						if number == nil then 
+							error("invalid 'for' limit (number expected)")
+						end 
+					end 
+					local step = stack[A + 1]
+					if type(step) ~= "number" then 
+						local number = tonumber(step)
+
+						if number == nil then 
+							error("invalid 'for' step (number expected)")
+						end 
+					end 
+					local index = stack[A + 1]
+					if type(index) ~= "number" then 
+						local number = tonumber(index)
+
+						if number == nil then 
+							error("invalid 'for' index (number expected)")
+						end 
+					end 
+
+					if step > 0 then 
+						if index >= limit then 
+							pc += inst.D
+						end
+					else 
+						if limit >= index then 
+							pc += inst.D
+						end 
+					end 
+				elseif op == 57 then --[[ FORNLOOP ]]
+					local limit = stack[inst.A]
+					local step = stack[inst.A + 1]
+					local index = stack[inst.A + 2] + step 
+
+					stack[inst.A + 2] = index
+
+					if step > 0 then 
+						if index <= limit then 
+							pc += inst.D
+						end
+					else 
+						if limit <= index then 
+							pc += inst.D
+						end 
+					end 
+				elseif op == 58 then --[[ FORGLOOP ]]
+					local A = inst.A
+					local aux = code[pc].value
+
+					top = A + 6
+
+					local vals = {stack[A](stack[A + 1], stack[A + 2])}
+
+					table.move(vals, 1, aux, A + 3, stack)
+
+					if stack[A + 3] ~= nil then
+						stack[A + 2] = stack[A + 3]
+						pc += inst.D
+					else 
+						pc += 1
+					end
+				elseif op == 61 then --[[ FORGPREP_NEXT ]]
+					if type(stack[inst.A]) ~= "function" then 
+						error("Attempt to iterate over non-function value")
+					end 
+
+					pc += inst.D					
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local newPrototype = module.plist[constants[inst.D + 1].data + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
@@ -555,6 +622,7 @@ local function luau_load(module, env)
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					local numparams = inst.A
 					for i = 1, numparams do
+						error("Not added")
 					end
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]

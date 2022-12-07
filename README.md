@@ -4,12 +4,9 @@ Pronounced like "Phew". This software aims to provide a decently fast and reliab
 
 Note that only an interpreter is provided, and compiled code must be obtained from some external source.
 
-### Unfinished
+### Finished
 
-What's missing?
-- [ ] LOADKX
-- [ ] JUMPX
-- [ ] JUMPXEQKS
+Fiu is finished and working but may have bugs, like the ones listed below that are not yet fixed.
 
 **BUGS**
 - [ ] Generic `for` loops don't work correctly | See "ForLoops" and "GenericFor" tests

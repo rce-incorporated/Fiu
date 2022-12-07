@@ -12,7 +12,7 @@ What's missing/not working?
 - [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)
 
 **BUGS**
-- [ ] `for` loop table structure is incorrect | See "ForLoops" test
+- [ ] generic `for` loop table structure is incorrect | See "ForLoops" test
 - [ ] Namecall table argument does not get passed | See "Namecall" test
 
 # Contributing

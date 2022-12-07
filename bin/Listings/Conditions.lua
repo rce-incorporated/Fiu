@@ -3,93 +3,107 @@ return function()
 	return [[Function 0 (??):
     1: local a = 5
 LOADN R0 5
-REMARK builtin math.floor/1
-    2: if a == math.floor(1) then 
-LOADN R2 1
-FASTCALL1 12 R2 L0
-GETIMPORT R1 2
-CALL R1 1 1
-L0: JUMPIFNOTEQ R0 R1 L1
-    3: 	a += 1 
-ADDK R0 R0 K3
-    4: 	print("EQ", a) 
-GETIMPORT R1 5
-LOADK R2 K6
+    2: if a then 
+JUMPIFNOT R0 L0
+    3: 	print("IF", a)
+GETIMPORT R1 1
+LOADK R2 K2
 MOVE R3 R0
 CALL R1 2 0
-JUMP L1
+    5: if not a then 
+L0: JUMPIF R0 L1
+    6: 	print("NOTIF", a)
+GETIMPORT R1 1
+LOADK R2 K3
+MOVE R3 R0
+CALL R1 2 0
 REMARK builtin math.floor/1
-    7: if a ~= math.floor(1) then 
+    8: if a == math.floor(1) then 
 L1: LOADN R2 1
 FASTCALL1 12 R2 L2
-GETIMPORT R1 2
+GETIMPORT R1 6
 CALL R1 1 1
-L2: JUMPIFEQ R0 R1 L3
-    8: 	a += 1 
-ADDK R0 R0 K3
-    9: 	print("NEQ", a) 
-GETIMPORT R1 5
-LOADK R2 K7
-MOVE R3 R0
-CALL R1 2 0
-REMARK builtin math.floor/1
-   11: if a >= math.floor(1) then
-L3: LOADN R2 1
-FASTCALL1 12 R2 L4
-GETIMPORT R1 2
-CALL R1 1 1
-L4: JUMPIFNOTLE R1 R0 L5
-   12:  	a += 1 
-ADDK R0 R0 K3
-   13:  	print("GTE", a) 
-GETIMPORT R1 5
+L2: JUMPIFNOTEQ R0 R1 L3
+    9: 	a += 1 
+ADDK R0 R0 K7
+   10: 	print("EQ", a) 
+GETIMPORT R1 1
 LOADK R2 K8
 MOVE R3 R0
 CALL R1 2 0
+JUMP L3
 REMARK builtin math.floor/1
-   15: if a > math.floor(1) then 
-L5: LOADN R2 1
-FASTCALL1 12 R2 L6
-GETIMPORT R1 2
+   13: if a ~= math.floor(1) then 
+L3: LOADN R2 1
+FASTCALL1 12 R2 L4
+GETIMPORT R1 6
 CALL R1 1 1
-L6: JUMPIFNOTLT R1 R0 L7
-   16: 	a += 1 
-ADDK R0 R0 K3
-   17: 	print("GT", a) 
-GETIMPORT R1 5
+L4: JUMPIFEQ R0 R1 L5
+   14: 	a += 1 
+ADDK R0 R0 K7
+   15: 	print("NEQ", a) 
+GETIMPORT R1 1
 LOADK R2 K9
 MOVE R3 R0
 CALL R1 2 0
 REMARK builtin math.floor/1
-   19: if a < math.floor(1) then 
-L7: LOADN R2 1
-FASTCALL1 12 R2 L8
-GETIMPORT R1 2
+   17: if a >= math.floor(1) then
+L5: LOADN R2 1
+FASTCALL1 12 R2 L6
+GETIMPORT R1 6
 CALL R1 1 1
-L8: JUMPIFNOTLT R0 R1 L9
-   20: 	a += 1 
-ADDK R0 R0 K3
-   21: 	print("LT", a) 
-GETIMPORT R1 5
+L6: JUMPIFNOTLE R1 R0 L7
+   18:  	a += 1 
+ADDK R0 R0 K7
+   19:  	print("GTE", a) 
+GETIMPORT R1 1
 LOADK R2 K10
 MOVE R3 R0
 CALL R1 2 0
 REMARK builtin math.floor/1
-   23: if a <= math.floor(1) then 
-L9: LOADN R2 1
-FASTCALL1 12 R2 L10
-GETIMPORT R1 2
+   21: if a > math.floor(1) then 
+L7: LOADN R2 1
+FASTCALL1 12 R2 L8
+GETIMPORT R1 6
 CALL R1 1 1
-L10: JUMPIFNOTLE R0 R1 L11
-   24: 	a += 1 
-ADDK R0 R0 K3
-   25: 	print("LTE", a) 
-GETIMPORT R1 5
+L8: JUMPIFNOTLT R1 R0 L9
+   22: 	a += 1 
+ADDK R0 R0 K7
+   23: 	print("GT", a) 
+GETIMPORT R1 1
 LOADK R2 K11
 MOVE R3 R0
 CALL R1 2 0
-   27: 
-L11: RETURN R0 0
+REMARK builtin math.floor/1
+   25: if a < math.floor(1) then 
+L9: LOADN R2 1
+FASTCALL1 12 R2 L10
+GETIMPORT R1 6
+CALL R1 1 1
+L10: JUMPIFNOTLT R0 R1 L11
+   26: 	a += 1 
+ADDK R0 R0 K7
+   27: 	print("LT", a) 
+GETIMPORT R1 1
+LOADK R2 K12
+MOVE R3 R0
+CALL R1 2 0
+REMARK builtin math.floor/1
+   29: if a <= math.floor(1) then 
+L11: LOADN R2 1
+FASTCALL1 12 R2 L12
+GETIMPORT R1 6
+CALL R1 1 1
+L12: JUMPIFNOTLE R0 R1 L13
+   30: 	a += 1 
+ADDK R0 R0 K7
+   31: 	print("LTE", a) 
+GETIMPORT R1 1
+LOADK R2 K13
+MOVE R3 R0
+CALL R1 2 0
+   33: 
+L13: RETURN R0 0
 
 ]]
 end

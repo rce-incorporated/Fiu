@@ -3,12 +3,16 @@ local allTests = {
 	"AndOr", "AndOrK", "Arit", "AritK", "Booleans", "Concat", "DupTableSetList", "GetImportSpecial", "Globals", "HelloWorld",
 	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions", "WhileRepeat", "BasicJump", "Closure"
 
-	-- Not fully working tests: "ForLoops"
+	-- Not fully working tests: "ForLoops", "Namecall"
+	--[[
+	ForLoops: generalised iteration is not supported, table structure was incorrect
+	Namecall: table argument pass is missing
+	]]
 	-- Optional Tests: "GetImportSpecial", "WhileTrueDo"
 }
 
 local specificTests = {
-	"ForLoops"
+	"Conditions"
 }
 
 for i,v in specificTests do

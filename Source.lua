@@ -286,13 +286,13 @@ local function luau_load(module, env)
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "GETGLOBAL expected string constant!")
+					assert(kv.type == "string", "GETGLOBAL encountered non-string constant!")
 					stack[inst.A] = env[kv.data]
 				elseif op == 8 then --[[ SETGLOBAL ]]
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "GETGLOBAL expected string constant!")
+					assert(kv.type == "string", "GETGLOBAL encountered non-string constant!")
 					env[kv.data] = stack[inst.A]
 				elseif op == 9 then --[[ GETUPVAL ]]
 					local uv = upvals[inst.B + 1]
@@ -376,10 +376,21 @@ local function luau_load(module, env)
 					end 
 
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+				elseif op == 20 then --[[ NAMECALL ]]
+					local A = inst.A
+					local B = inst.B
+					local aux = code[pc].value
+					pc += 1
+					local kv = constants[aux + 1]
+					assert(kv.type == "string", "NAMECALL encountered non-string constant!")
+
+					stack[A + 1] = stack[B]
+					stack[A] = stack[B][kv.data]
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
+
 					local ret_list = table.pack(stack[A](table.unpack(stack, A + 1, A + params)))
 					local ret_num = ret_list.n
 
@@ -388,7 +399,6 @@ local function luau_load(module, env)
 					else
 						ret_num = C - 1
 					end
-
 					table.move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
 					local A = inst.A
@@ -406,6 +416,14 @@ local function luau_load(module, env)
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
 					pc += inst.D
+				elseif op == 25 then --[[ JUMPIF ]]
+					if stack[inst.A] then
+						pc += inst.D
+					end
+				elseif op == 26 then --[[ JUMPIFNOT ]]
+					if not stack[inst.A] then
+						pc += inst.D
+					end
 				elseif op == 27 then --[[ JUMPIFEQ ]]
 					local aux = code[pc].value
 					if stack[inst.A] == stack[aux] then
@@ -652,7 +670,7 @@ local function luau_load(module, env)
 				elseif op == 79 then --[[ JUMPXEQKN ]]
 					local aux = code[pc].value
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
-					assert(kv.type == "number", "JUMPXEQKN expected number constant!")
+					assert(kv.type == "number", "JUMPXEQKN encountered non-number constant!")
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
 						pc += if A == kv.data then inst.D else 1

@@ -1,4 +1,10 @@
 local a = 5
+if a then 
+	print("IF", a)
+end 
+if not a then 
+	print("NOTIF", a)
+end
 if a == math.floor(1) then 
 	a += 1 
 	print("EQ", a) 

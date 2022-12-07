@@ -356,26 +356,33 @@ local function luau_load(module, env)
 				elseif op == 24 then --[[ JUMPBACK ]]
 					--[[ Issue here is this jumps way too far ]]
 					pc += inst.D 
-				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
+				elseif op == 27 then --[[ JUMPIFEQ ]]
 					local aux = code[pc].value
-					if stack[inst.A] ~= stack[aux] then
+					if stack[inst.A] == stack[aux] then
 						pc += inst.D
 					else
 						pc += 1
+					end
+				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
+					local aux = code[pc].value
+					if stack[inst.A] == stack[aux] then
+						pc += 1
+					else
+						pc += inst.D
 					end
 				elseif op == 31 then --[[ JUMPIFNOTLE ]]
 					local aux = code[pc].value
 					if stack[inst.A] < stack[aux] then
-						pc += inst.D
-					else
 						pc += 1
+					else
+						pc += inst.D
 					end
-				elseif op == 31 then --[[ JUMPIFNOTLT ]]
+				elseif op == 32 then --[[ JUMPIFNOTLT ]]
 					local aux = code[pc].value
 					if stack[inst.A] <= stack[aux] then
-						pc += inst.D
-					else
 						pc += 1
+					else
+						pc += inst.D
 					end
 				elseif op == 33 then --[[ ADD ]]
 					stack[inst.A] = stack[inst.B] + stack[inst.C]
@@ -403,28 +410,28 @@ local function luau_load(module, env)
 					stack[inst.A] = stack[inst.B] ^ constants[inst.C + 1].data
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
-					if not not value == false then
+					if (not not value) == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 46 then --[[ OR ]]
 					local value = stack[inst.B]
-					if not not value == true then
+					if (not not value) == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 47 then --[[ ANDK ]]
 					local value = stack[inst.B]
-					if not not value == false then
+					if (not not value) == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1].data or false
 					end
 				elseif op == 48 then --[[ ORK ]]
 					local value = stack[inst.B]
-					if not not value == true then
+					if (not not value) == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1].data or false
@@ -480,14 +487,14 @@ local function luau_load(module, env)
 					--[[ Skipped ]]
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
 					local aux = code[pc].value
-					if ra == nil and 0 or 1 == bit32.rshift(aux, 31) then
+					if (ra == nil and 0 or 1) == bit32.rshift(aux, 31) then
 						pc += inst.D 
 					else 
 						pc += 1
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = code[pc].value
-					if ((ra and 0 or 1 == bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
+					if ((ra and 0 or 1) == (bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
 						pc += inst.D 
 					else 
 						pc += 1
@@ -496,15 +503,14 @@ local function luau_load(module, env)
 					local aux = code[pc].value
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
 					assert(kv.type == "number", "JUMPXEQKN expected number constant!")
-					kv = kv.data
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
-						pc += if A == kv then inst.D else 1
+						pc += if A == kv.data then inst.D else 1
 					else
-						pc += if A ~= kv then inst.D else 1
+						pc += if A ~= kv.data then inst.D else 1
 					end
 				else
-					error("Unsupported Opcode: " .. inst.opname)
+					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
 			end
 		end

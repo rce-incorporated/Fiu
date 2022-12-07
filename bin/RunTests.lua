@@ -3,14 +3,17 @@ local allTests = {
 	"AndOr", "AndOrK", "Arit", "AritK", "Booleans", "Concat", "DupTableSetList", "GetImportSpecial", "Globals", "HelloWorld",
 	"LOADN", "LOADNIL", "Tables", "Unary",
 
-	-- "WhileRepeat.lua", "WhileTrueDo.lua", "BasicJump", "Conditions" > not implemented
+	-- "WhileRepeat", "WhileTrueDo", "BasicJump", "Conditions" > not implemented
 }
+
 local specificTests = {
-
+	"BasicJump"
 }
 
-for i,v in allTests do
+for i,v in specificTests do
 	print(string.format(">>>>>>>> RUNNING TEST: %s <<<<<<<<", v))
+	print("--------->> BYTECODE LISTING <<---------")
+	print(require("Listings/"..v)())
 	print("--------->> VM OUTPUT <<---------") 
 	print("VM PCALL: ", pcall(function()
 		local m = require("Tests/"..v)()

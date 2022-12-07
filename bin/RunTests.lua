@@ -12,7 +12,7 @@ local allTests = {
 }
 
 local specificTests = {
-	"Conditions"
+	"Namecall"
 }
 
 for i,v in specificTests do

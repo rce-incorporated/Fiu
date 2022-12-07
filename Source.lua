@@ -256,8 +256,8 @@ local function luau_load(module, env)
 
 	local mainProto = module.plist[module.mainp + 1]
 	local function luau_wrapclosure(module, proto, upvals)
-		local function luau_execute(debugging, protos, code, varargs)
-			local top, pc, stack, open_upvalues = -1, 1, {}, {}
+		local function luau_execute(debugging, stack, protos, code, varargs)
+			local top, pc, open_upvalues = -1, 1, {}
 			local constants = proto.k
 
 			local function vm_kv(index)
@@ -390,8 +390,8 @@ local function luau_load(module, env)
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
-
 					local ret_list = table.pack(stack[A](table.unpack(stack, A + 1, A + params)))
+					
 					local ret_num = ret_list.n
 
 					if C == 0 then
@@ -399,6 +399,7 @@ local function luau_load(module, env)
 					else
 						ret_num = C - 1
 					end
+
 					table.move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
 					local A = inst.A
@@ -699,9 +700,9 @@ local function luau_load(module, env)
 			local debugging = {}
 			local result
 			if false then -- for debugging issues
-				result = table.pack(pcall(luau_execute, debugging, proto.protos, proto.code, varargs))
+				result = table.pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
 			else
-				result = table.pack(true, luau_execute(debugging, proto.protos, proto.code, varargs))
+				result = table.pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
 			end
 			if result[1] then
 				return table.unpack(result, 2, result.n)

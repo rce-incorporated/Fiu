@@ -1,4 +1,10 @@
-## Unfinished
+### Unfinished
+
+What's missing/not working?
+- [ ] For loop operations
+- [ ] Vararg operations
+- [ ] For loop table structure is incorrect
+- [ ] Namecall table argument does not get passed
 
 # [Fiu](https://github.com/TheGreatSageEqualToHeaven/Fiu/blob/main/Source.lua)
 

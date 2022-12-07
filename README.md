@@ -7,11 +7,12 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 ### Unfinished
 
 What's missing?
-- [ ] Some `for` loop operations
-- [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)
+- [ ] LOADKX
+- [ ] JUMPX
+- [ ] JUMPXEQKS
 
 **BUGS**
-- [ ] Generic `for` loop table structure is incorrect | See "ForLoops" test
+- [ ] Generic `for` loops don't work correctly | See "ForLoops" and "GenericFor" tests
 
 # Contributing
 

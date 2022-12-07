@@ -11,7 +11,7 @@ What's missing?
 - [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)
 
 **BUGS**
-- [ ] Generic `for` loop table structure is incorrect | See "ForLoops" test
+- [ ] Generic `for` loops don't work correctly | See "ForLoops" and "GenericFor" tests
 
 # Contributing
 

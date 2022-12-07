@@ -1,3 +1,5 @@
+local FIU_DEBUGGING = true
+
 local function luau_newmodule()
 	return {
 		slist = {},
@@ -805,7 +807,7 @@ local function luau_load(module, env)
 
 			local debugging = {}
 			local result
-			if false then -- for debugging issues
+			if not FIU_DEBUGGING then -- for debugging issues
 				result = table.pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
 			else
 				result = table.pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))

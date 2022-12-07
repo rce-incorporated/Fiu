@@ -8,7 +8,6 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 What's missing?
 - [ ] Some `for` loop operations
-- [ ] Vararg operations
 - [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)
 
 **BUGS**

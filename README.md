@@ -6,7 +6,7 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 ### Unfinished
 
-What's missing/not working?
+What's missing?
 - [ ] Some `for` loop operations
 - [ ] Vararg operations
 - [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)

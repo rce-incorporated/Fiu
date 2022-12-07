@@ -14,3 +14,11 @@ What's missing/not working?
 **BUGS**
 - [ ] `for` loop table structure is incorrect | See "ForLoops" test
 - [ ] Namecall table argument does not get passed | See "Namecall" test
+
+# Contributing
+
+- Tests can be added and compiled using CreateTests.lua, Lua with the `io` and `os` library is needed.
+- Tests must be ran with Luau using `RunTests.lua`, you can use `allTests` or `specificTests`.
+- Contributed code should be consistent with the source.
+
+<div>Luau updates often and Fiu will need to be updated and have working releases added for every new version.</div>

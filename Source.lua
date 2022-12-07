@@ -354,8 +354,7 @@ local function luau_load(module, env)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
-					--[[ Issue here is this jumps way too far ]]
-					pc += inst.D 
+					print(inst.D)
 				elseif op == 27 then --[[ JUMPIFEQ ]]
 					local aux = code[pc].value
 					if stack[inst.A] == stack[aux] then

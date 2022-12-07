@@ -7,16 +7,28 @@ LOADN R0 1
 L0: JUMPXEQKN R0 K0 L1
     3:     a = a + 1
 ADDK R0 R0 K1
+    4:     print(a)
+GETIMPORT R1 3
+MOVE R2 R0
+CALL R1 1 0
     2: while a ~= 10 do 
 JUMPBACK L0
-    6: local a = 1
-L1: LOADN R1 1
-    8:     a = a + 1
+    7: print('REPEAT!')
+L1: GETIMPORT R1 3
+LOADK R2 K4
+CALL R1 1 0
+    9: local a = 1
+LOADN R1 1
+   11:     a = a + 1
 L2: ADDK R1 R1 K1
-    9: until a == 10
+   12:     print(a)
+GETIMPORT R2 3
+MOVE R3 R1
+CALL R2 1 0
+   13: until a == 10
 JUMPXEQKN R1 K0 L3
 JUMPBACK L2
-   10: 
+   14: 
 L3: RETURN R0 0
 
 ]]

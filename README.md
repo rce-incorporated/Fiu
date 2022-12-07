@@ -13,7 +13,6 @@ What's missing?
 
 **BUGS**
 - [ ] Generic `for` loop table structure is incorrect | See "ForLoops" test
-- [ ] Namecall table argument does not get passed | See "Namecall" test
 
 # Contributing
 

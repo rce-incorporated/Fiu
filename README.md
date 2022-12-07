@@ -9,5 +9,8 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 What's missing/not working?
 - [ ] Some `for` loop operations
 - [ ] Vararg operations
+- [ ] Some missing operations (LOADKX, FORGLOOP_INEXT, etc)
+
+**BUGS**
 - [ ] `for` loop table structure is incorrect | See "ForLoops" test
 - [ ] Namecall table argument does not get passed | See "Namecall" test

@@ -707,6 +707,14 @@ local function luau_load(module, env)
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					--[[ Handled by wrapper ]]
+				elseif op == 66 then --[[ LOADKX ]]
+					local aux = code[pc].value
+					pc += 1
+					local kv = constants[aux + 1]
+					assert(kv.type == "string", "LOADKX encountered non-string constant!")
+					stack[inst.A] = kv.data
+				elseif op == 67 then --[[ JUMPX ]]
+					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
 				elseif op == 70 then --[[ CAPTURE ]]
@@ -763,6 +771,15 @@ local function luau_load(module, env)
 						pc += if A == kv.data then inst.D else 1
 					else
 						pc += if A ~= kv.data then inst.D else 1
+					end
+				elseif op == 80 then --[[ JUMPXEQKS ]]
+					local aux = code[pc].value
+					local kv = constants[bit32.band(aux, 0xffffff) + 1]
+					assert(kv.type == "string", "JUMPXEQKS encountered non-string constant!")
+					if ((kv.data == stack[inst.A]) and 0 or 1) ~= bit32.rshift(aux, 31) then 
+						pc += inst.D 
+					else 
+						pc += 1
 					end
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)

@@ -1,18 +1,14 @@
 local fiu = require("../Source")
 local allTests = {
 	"AndOr", "AndOrK", "Arit", "AritK", "Booleans", "Concat", "DupTableSetList", "GetImportSpecial", "Globals", "HelloWorld",
-	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions", "WhileRepeat", "BasicJump", "Closure"
+	"LOADN", "LOADNIL", "Tables", "Unary", "Conditions", "WhileRepeat", "BasicJump", "Closure", "Namecall", "Varargs"
 
-	-- Not fully working tests: "ForLoops", "Namecall"
-	--[[
-	ForLoops: generalised iteration is not supported, table structure was incorrect
-	Namecall: table argument pass is missing
-	]]
+	-- Not fully working tests: "ForLoops", "GenericFor"
 	-- Optional Tests: "GetImportSpecial", "WhileTrueDo"
 }
 
 local specificTests = {
-	"Varargs"
+	"GenericFor"
 }
 
 for i,v in specificTests do

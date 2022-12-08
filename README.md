@@ -6,7 +6,7 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.
 
-### Bugs
+#### Bugs
 
 - [ ] JUMPKXK instructions incorrectly use non-existant `ra` instead of `stack[inst.A]`
 - [ ] RETURN incorrectly uses non-existant `b` instead of `B -1`

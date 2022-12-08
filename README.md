@@ -8,9 +8,7 @@ Fiu is in a working state but bugs and side effects can be encountered! Open an 
 
 #### Bugs
 
-- [ ] JUMPXK instructions incorrectly use non-existant `ra` instead of `stack[inst.A]`
-- [ ] RETURN incorrectly uses non-existant `b` instead of `B -1`
-- [ ] GETTABLE incorrectly uses `inst.B` twice instead of `inst.A`
+- [ ] Upvalue values (type 0) work incorrectly
 
 # Usage
 If you are going to use `Source.lua` on the repository instead of the [releases](https://github.com/TheGreatSageEqualToHeaven/Fiu/releases) you will need to set `FIU_DEBUGGING` to false at the top of the file

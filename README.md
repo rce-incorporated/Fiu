@@ -8,7 +8,7 @@ Fiu is in a working state but bugs and side effects can be encountered! Open an 
 
 #### Bugs
 
-- [ ] JUMPKXK instructions incorrectly use non-existant `ra` instead of `stack[inst.A]`
+- [ ] JUMPXK instructions incorrectly use non-existant `ra` instead of `stack[inst.A]`
 - [ ] RETURN incorrectly uses non-existant `b` instead of `B -1`
 - [ ] GETTABLE incorrectly uses `inst.B` twice instead of `inst.A`
 

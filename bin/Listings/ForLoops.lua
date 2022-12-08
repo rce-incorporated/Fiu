@@ -16,22 +16,22 @@ CALL R3 1 0
 JUMPXEQKN R2 K3 L2
     1: for i = 1, 10 do 
 L1: FORNLOOP R0 L0
-   11: for i,v in pairs({1,2,3}) do 
-L2: GETIMPORT R0 5
 REMARK allocation: table array 3
-NEWTABLE R1 0 3
+   11: for i,v in {1,2,3} do 
+L2: NEWTABLE R0 0 3
 LOADN R3 1
 LOADN R4 2
 LOADN R5 3
-SETLIST R1 R3 3 [1]
-CALL R0 1 3
-FORGPREP_NEXT R0 L4
+SETLIST R0 R3 3 [1]
+LOADNIL R1
+LOADNIL R2
+FORGPREP R0 L4
    12: 	print(i,v)
 L3: GETIMPORT R5 2
 MOVE R6 R3
 MOVE R7 R4
 CALL R5 2 0
-   11: for i,v in pairs({1,2,3}) do 
+   11: for i,v in {1,2,3} do 
 L4: FORGLOOP R0 L3 2
    14: 
 RETURN R0 0

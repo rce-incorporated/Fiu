@@ -348,9 +348,9 @@ local function luau_load(module, env)
 						stack[inst.A] = env[vm_kv(id0)][vm_kv(id1)][vm_kv(id2)]
 					end
 				elseif op == 13 then --[[ GETTABLE ]]
-					stack[inst.B] = stack[inst.B][stack[inst.C]]
+					stack[inst.A] = stack[inst.B][stack[inst.C]]
 				elseif op == 14 then --[[ SETTABLE ]]
-					stack[inst.B][stack[inst.C]] = stack[inst.B]
+					stack[inst.B][stack[inst.C]] = stack[inst.A]
 				elseif op == 15 then --[[ GETTABLEKS ]]
 					local index = constants[code[pc].value + 1].data
 					pc += 1
@@ -426,7 +426,8 @@ local function luau_load(module, env)
 					table.move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
 					local A = inst.A
-					local B = inst.B
+					local B = inst.B 
+					local b = B - 1
 					local nresults
 
 					if b == LUA_MULTRET then
@@ -755,14 +756,14 @@ local function luau_load(module, env)
 					pc += inst.D
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
 					local aux = code[pc].value
-					if (ra == nil and 0 or 1) == bit32.rshift(aux, 31) then
+					if (stack[inst.A] == nil and 0 or 1) == bit32.rshift(aux, 31) then
 						pc += inst.D
 					else
 						pc += 1
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = code[pc].value
-					if ((ra and 0 or 1) == (bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
+					if ((stack[inst.A] and 0 or 1) == (bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
 						pc += inst.D
 					else
 						pc += 1

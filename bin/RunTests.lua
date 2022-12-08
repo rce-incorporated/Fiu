@@ -8,7 +8,7 @@ local allTests = {
 }
 
 local specificTests = {
-
+	"CLOSE"
 }
 
 for i,v in specificTests do

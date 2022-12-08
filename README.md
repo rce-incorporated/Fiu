@@ -6,6 +6,15 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.
 
+# Usage
+If you are going to use `Source.lua` on the repository instead of the [releases](https://github.com/TheGreatSageEqualToHeaven/Fiu/releases) you will need to set `FIU_DEBUGGING` to false at the top of the file
+
+`luau_load` can be used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.
+`luau_deserialize` can be used to deserialise bytecode.
+
+`luau_newproto` can be used to build your own prototype.
+`luau_newmodule` can be used to build your own module.
+
 # Contributing
 
 - Tests can be added and compiled using CreateTests.lua, Lua with the `io` and `os` library is needed.

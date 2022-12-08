@@ -4,12 +4,7 @@ Pronounced like "Phew". This software aims to provide a decently fast and reliab
 
 Note that only an interpreter is provided, and compiled code must be obtained from some external source.
 
-### Finished
-
-Fiu is finished and working but may have bugs, like the ones listed below that are not yet fixed.
-
-**BUGS**
-- [ ] Generic `for` loops don't work correctly | See "ForLoops" and "GenericFor" tests
+Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.
 
 # Contributing
 

@@ -9,11 +9,11 @@ Fiu is in a working state but bugs and side effects can be encountered! Open an 
 # Usage
 If you are going to use `Source.lua` on the repository instead of the [releases](https://github.com/TheGreatSageEqualToHeaven/Fiu/releases) you will need to set `FIU_DEBUGGING` to false at the top of the file
 
-`luau_load` <div>can be used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.</div>
-`luau_deserialize` <div>can be used to deserialise bytecode.</div>
+- `luau_load` <div>Used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.</div>
+- `luau_deserialize` <div>Used to deserialise bytecode.</div>
 
-`luau_newproto` <div>can be used to build your own prototype.</div>
-`luau_newmodule` <div>can be used to build your own module.</div>
+- `luau_newproto` <div>Used to build your own prototype.</div>
+- `luau_newmodule` <div>Used to build your own module.</div>
 
 # Contributing
 

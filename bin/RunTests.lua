@@ -8,7 +8,7 @@ local allTests = {
 }
 
 local specificTests = {
-	"ForLoops"
+	"GenericFor"
 }
 
 for i,v in specificTests do

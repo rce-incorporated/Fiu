@@ -11,6 +11,7 @@ local specificTests = {
 	"CLOSE"
 }
 
+
 for i,v in specificTests do
 	print(string.format(">>>>>>>> RUNNING TEST: %s <<<<<<<<", v))
 	print("--------->> BYTECODE LISTING <<---------")

@@ -378,9 +378,15 @@ local function luau_load(module, env)
 
 						local type = pseudo.A
 
-						if type == 0 then -- value
-							upvalues[i] = stack[pseudo.B]
-						elseif type == 1 then -- reference
+						if type == 0 then --// value
+							local upvalue = {
+								value = stack[pseudo.B],
+								index = "value", --// self reference
+							}
+							upvalue.store = upvalue
+
+							upvalues[i] = upvalue
+						elseif type == 1 then --// reference
 							local index = pseudo.B
 							local prev = open_upvalues[index]
 
@@ -393,7 +399,7 @@ local function luau_load(module, env)
 							end
 
 							upvalues[i] = prev
-						elseif type == 2 then -- upvalue
+						elseif type == 2 then --// upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
 					end
@@ -700,14 +706,20 @@ local function luau_load(module, env)
 
 						pc += 1
 
-						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
+						assert(cop == 70, "Unhandled opcode passed to DUPCLOSURE")
 
 						local type = pseudo.A
 
-						if type == 0 then -- value
-							upvalues[i] = stack[pseudo.B]
+						if type == 0 then --// value
+							local upvalue = {
+								value = stack[pseudo.B],
+								index = "value", --// self reference
+							}
+							upvalue.store = upvalue
+
+							upvalues[i] = upvalue
 						--// references dont get handled by DUPCLOSURE
-						elseif type == 2 then -- upvalue
+						elseif type == 2 then --// upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
 					end
@@ -811,7 +823,7 @@ local function luau_load(module, env)
 
 			local debugging = {}
 			local result
-			if not FIU_DEBUGGING then -- for debugging issues
+			if not FIU_DEBUGGING then --// for debugging issues
 				result = table.pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
 			else
 				result = table.pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))

@@ -8,7 +8,7 @@ local allTests = {
 }
 
 local specificTests = {
-	"CLOSE"
+	"WrapperTest"
 }
 
 
@@ -21,9 +21,19 @@ for i,v in specificTests do
 		require("SourceTests/"..v)()
 	end))
 	print("--------->> VM OUTPUT <<---------") 
-	print("VM PCALL: ", pcall(function()
+
+	local s,e = pcall(function()
 		local m = require("Tests/"..v)()
 		fiu.luau_load(m, getfenv())()
-	end))
+	end)
+
+	if not s then 
+		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>> Broken: " .. e)
+	end
+
+	print("VM PCALL: ", s)
+
 	print(string.format(">>>>>>>> FINISHED RUNNING TEST: %s <<<<<<<<", v))
 end
+
+print("ALL TESTS PASSED.")

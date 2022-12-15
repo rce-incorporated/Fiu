@@ -1,4 +1,5 @@
 local FIU_DEBUGGING = true
+local string_unpack = string.unpack --// string.unpack does not have a builtin so its faster to make it local
 
 local function luau_newmodule()
 	return {
@@ -114,13 +115,13 @@ local function luau_deserialize(bytecode)
 	local module = luau_newmodule()
 
 	local function read_byte()
-		local b = string.unpack(">B", bytecode, position)
+		local b = string_unpack(">B", bytecode, position)
 		position = position + 1
 		return b
 	end
 
 	local function read_integer()
-		local int = string.unpack("I4", bytecode, position)
+		local int = string_unpack("I4", bytecode, position)
 		position = position + 4
 		return int
 	end
@@ -143,86 +144,94 @@ local function luau_deserialize(bytecode)
 		if size == 0 then
 			return ""
 		else
-			str = string.unpack("c" .. size, bytecode, position)
+			str = string_unpack("c" .. size, bytecode, position)
 			position = position + size
 		end
 		return str
 	end
 
-	local function readproto()
+	local function read_proto()
 		local p = luau_newproto()
 		p.maxstacksize = read_byte()
 		p.numparams = read_byte()
 		p.nups = read_byte()
 		p.isvararg = read_byte() ~= 0
 
-		p.sizecode = read_variable_integer()
-		for i = 1, p.sizecode do
+		local codelist = p.code
+		local sizecode = read_variable_integer()
+		p.sizecode = sizecode
+		for i = 1, sizecode do
 			local i = {}
-			i.value = read_integer()
-			i.opcode = bit32.band(i.value, 0xFF)
-			local opcode = op_list[i.opcode + 1]
+			local value = read_integer()
+			local opcode = bit32.band(value, 0xFF)
+			i.value = value
+			i.opcode = opcode
+			local opcode = op_list[opcode + 1]
 			i.opname = opcode[1]
-			i.type = opcode[2]
-			if i.type == 3 then --[[ ABC ]]
-				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-				i.B = bit32.band(bit32.rshift(i.value, 16), 0xFF)
-				i.C = bit32.band(bit32.rshift(i.value, 24), 0xFF)
-			elseif i.type == 2 then --[[ AB ]]
-				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-				i.B = bit32.band(bit32.rshift(i.value, 16), 0xFF)
-			elseif i.type == 1 then --[[ A ]]
-				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-			elseif i.type == 4 then --[[ AD ]]
-				i.A = bit32.band(bit32.rshift(i.value, 8), 0xFF)
-				local temp = bit32.band(bit32.rshift(i.value, 16), 0xFFFF)
+
+			local optype = opcode[2]
+			i.type = optype
+
+			local optype = i.type
+			if optype == 3 then --[[ ABC ]]
+				i.A = bit32.band(bit32.rshift(value, 8), 0xFF)
+				i.B = bit32.band(bit32.rshift(value, 16), 0xFF)
+				i.C = bit32.band(bit32.rshift(value, 24), 0xFF)
+			elseif optype == 2 then --[[ AB ]]
+				i.A = bit32.band(bit32.rshift(value, 8), 0xFF)
+				i.B = bit32.band(bit32.rshift(value, 16), 0xFF)
+			elseif optype == 1 then --[[ A ]]
+				i.A = bit32.band(bit32.rshift(value, 8), 0xFF)
+			elseif optype == 4 then --[[ AD ]]
+				i.A = bit32.band(bit32.rshift(value, 8), 0xFF)
+				local temp = bit32.band(bit32.rshift(value, 16), 0xFFFF)
 				i.D = if temp < 0x8000 then temp else temp - 0x10000
-			elseif i.type == 5 then --[[ AE ]]
-				local temp = bit32.band(bit32.rshift(i.value, 8), 0xFFFFFF)
+			elseif optype == 5 then --[[ AE ]]
+				local temp = bit32.band(bit32.rshift(value, 8), 0xFFFFFF)
 				i.E = if temp < 0x800000 then temp else temp - 0x1000000
 			end
-			table.insert(p.code, i)
+
+			table.insert(codelist, i)
 		end
 
-		p.sizek = read_variable_integer()
-		for i = 1, p.sizek do
+		local klist = p.k
+		local sizek = read_variable_integer()
+		p.sizek = sizek
+		for i = 1, sizek do
 			local kt = read_byte()
-			local k = {}
+			local k
+
 			if kt == 0 then
-				k.type = "nil"
-				k.data = nil
+				k = nil
 			elseif kt == 1 then
-				k.type = "bool"
-				k.data = read_byte() ~= 0
+				k = read_byte() ~= 0
 			elseif kt == 2 then
-				k.type = "number"
-				local d = string.unpack("d", bytecode, position)
+				local d = string_unpack("d", bytecode, position)
 				position = position + 8
-				k.data = d
+				k = d
 			elseif kt == 3 then
-				k.type = "string"
-				k.data = module.slist[read_variable_integer()]
+				k = module.slist[read_variable_integer()]
 			elseif kt == 4 then
-				k.type = "import"
-				k.data = read_integer()
+				k = read_integer()
 			elseif kt == 5 then
 				local data = {}
 				local dataLength = read_variable_integer()
 				for i = 1, dataLength do
 					table.insert(data, read_variable_integer())
 				end
-				k.type = "table"
-				k.data = data
+				k = data
 			elseif kt == 6 then
-				k.type = "closure"
-				k.data = read_variable_integer()
+				k = read_variable_integer()
 			end
-			table.insert(p.k, k)
+
+			table.insert(klist, k)
 		end
 
-		p.sizep = read_variable_integer()
-		for i = 1, p.sizep do
-			table.insert(p.protos, read_variable_integer())
+		local sizep = read_variable_integer()
+		local protolist = p.protos
+		p.sizep = sizep
+		for i = 1, sizep do
+			table.insert(protolist, read_variable_integer())
 		end
 
 		read_variable_integer()
@@ -230,10 +239,10 @@ local function luau_deserialize(bytecode)
 
 		if read_byte() ~= 0 then
 			local lineGap = read_byte()
-			for i = 1, p.sizecode do
+			for i = 1, sizecode do
 				read_byte()
 			end
-			local intervals = bit32.rshift(p.sizecode - 1, lineGap) + 1
+			local intervals = bit32.rshift(sizecode - 1, lineGap) + 1
 			for i = 1, intervals do
 				read_integer()
 			end
@@ -257,14 +266,16 @@ local function luau_deserialize(bytecode)
 		error("Incorrect Bytecode Provided", 0)
 	end
 
+	local stringList = module.slist
 	local stringCount = read_variable_integer()
 	for i = 1, stringCount do
-		table.insert(module.slist, read_string())
+		table.insert(stringList, read_string())
 	end
 
+	local prototypeList = module.plist
 	local protoCount = read_variable_integer()
 	for i = 1, protoCount do
-		table.insert(module.plist, readproto())
+		table.insert(prototypeList, read_proto())
 	end
 
 	module.mainp = read_variable_integer()
@@ -277,15 +288,12 @@ local function luau_load(module, env)
 		module = luau_deserialize(module)
 	end
 
-	local mainProto = module.plist[module.mainp + 1]
+	local protolist = module.plist
+	local mainProto = protolist[module.mainp + 1]
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
 			local constants = proto.k
-
-			local function vm_kv(index)
-				return constants[index + 1].data
-			end
 
 			while true do
 				local inst = code[pc]
@@ -302,21 +310,21 @@ local function luau_load(module, env)
 				elseif op == 4 then --[[ LOADN ]]
 					stack[inst.A] = inst.D
 				elseif op == 5 then --[[ LOADK ]]
-					stack[inst.A] = constants[inst.D + 1].data
+					stack[inst.A] = constants[inst.D + 1]
 				elseif op == 6 then --[[ MOVE ]]
 					stack[inst.A] = stack[inst.B]
 				elseif op == 7 then --[[ GETGLOBAL ]]
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "GETGLOBAL encountered non-string constant!")
-					stack[inst.A] = env[kv.data]
+					assert(type(kv) == "string", "GETGLOBAL encountered non-string constant!")
+					stack[inst.A] = env[kv]
 				elseif op == 8 then --[[ SETGLOBAL ]]
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "GETGLOBAL encountered non-string constant!")
-					env[kv.data] = stack[inst.A]
+					assert(type(kv) == "string", "GETGLOBAL encountered non-string constant!")
+					env[kv] = stack[inst.A]
 				elseif op == 9 then --[[ GETUPVAL ]]
 					local uv = upvals[inst.B + 1]
 					stack[inst.A] = uv.store[uv.index]
@@ -338,25 +346,25 @@ local function luau_load(module, env)
 					local count = bit32.rshift(extend, 30)
 					local id0 = bit32.band(bit32.rshift(extend, 20), 0x3FF)
 					if count == 1 then
-						stack[inst.A] = env[vm_kv(id0)]
+						stack[inst.A] = env[constants[id0 + 1]]
 					elseif count == 2 then
 						local id1 = bit32.band(bit32.rshift(extend, 10), 0x3FF)
-						stack[inst.A] = env[vm_kv(id0)][vm_kv(id1)]
+						stack[inst.A] = env[constants[id0 + 1]][constants[id1 + 1]]
 					elseif count == 3 then
 						local id1 = bit32.band(bit32.rshift(extend, 10), 0x3FF)
 						local id2 = bit32.band(bit32.rshift(extend, 0), 0x3FF)
-						stack[inst.A] = env[vm_kv(id0)][vm_kv(id1)][vm_kv(id2)]
+						stack[inst.A] = env[constants[id0 + 1]][constants[id1 + 1]][constants[id2 + 1]]
 					end
 				elseif op == 13 then --[[ GETTABLE ]]
 					stack[inst.A] = stack[inst.B][stack[inst.C]]
 				elseif op == 14 then --[[ SETTABLE ]]
 					stack[inst.B][stack[inst.C]] = stack[inst.A]
 				elseif op == 15 then --[[ GETTABLEKS ]]
-					local index = constants[code[pc].value + 1].data
+					local index = constants[code[pc].value + 1]
 					pc += 1
 					stack[inst.A] = stack[inst.B][index]
 				elseif op == 16 then --[[ SETTABLEKS ]]
-					local index = constants[code[pc].value + 1].data
+					local index = constants[code[pc].value + 1]
 					pc += 1
 					stack[inst.B][index] = stack[inst.A]
 				elseif op == 17 then --[[ GETTABLEN ]]
@@ -364,7 +372,7 @@ local function luau_load(module, env)
 				elseif op == 18 then --[[ SETTABLEN ]]
 					stack[inst.B][inst.C] = stack[inst.A]
 				elseif op == 19 then --[[ NEWCLOSURE ]]
-					local newPrototype = module.plist[inst.D + 1]
+					local newPrototype = protolist[inst.D + 1]
 
 					local upvalues = {}
 
@@ -411,10 +419,10 @@ local function luau_load(module, env)
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "NAMECALL encountered non-string constant!")
+					assert(type(kv) == "string", "NAMECALL encountered non-string constant!")
 
 					stack[A + 1] = stack[B]
-					stack[A] = stack[B][kv.data]
+					stack[A] = stack[B][kv]
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
@@ -510,17 +518,17 @@ local function luau_load(module, env)
 				elseif op == 38 then --[[ POW ]]
 					stack[inst.A] = stack[inst.B] ^ stack[inst.C]
 				elseif op == 39 then --[[ ADDK ]]
-					stack[inst.A] = stack[inst.B] + constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] + constants[inst.C + 1]
 				elseif op == 40 then --[[ SUBK ]]
-					stack[inst.A] = stack[inst.B] - constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] - constants[inst.C + 1]
 				elseif op == 41 then --[[ MULK ]]
-					stack[inst.A] = stack[inst.B] * constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] * constants[inst.C + 1]
 				elseif op == 42 then --[[ DIVK ]]
-					stack[inst.A] = stack[inst.B] / constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] / constants[inst.C + 1]
 				elseif op == 43 then --[[ MODK ]]
-					stack[inst.A] = stack[inst.B] % constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] % constants[inst.C + 1]
 				elseif op == 44 then --[[ POWK ]]
-					stack[inst.A] = stack[inst.B] ^ constants[inst.C + 1].data
+					stack[inst.A] = stack[inst.B] ^ constants[inst.C + 1]
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
 					if not not value == false then
@@ -540,14 +548,14 @@ local function luau_load(module, env)
 					if not not value == false then
 						stack[inst.A] = value
 					else
-						stack[inst.A] = constants[inst.C + 1].data or false
+						stack[inst.A] = constants[inst.C + 1] or false
 					end
 				elseif op == 48 then --[[ ORK ]]
 					local value = stack[inst.B]
 					if not not value == true then
 						stack[inst.A] = value
 					else
-						stack[inst.A] = constants[inst.C + 1].data or false
+						stack[inst.A] = constants[inst.C + 1] or false
 					end
 				elseif op == 49 then --[[ CONCAT ]]
 					local s = ""
@@ -565,10 +573,10 @@ local function luau_load(module, env)
 					stack[inst.A] = table.create(code[pc].value)
 					pc += 1
 				elseif op == 54 then --[[ DUPTABLE ]]
-					local template = constants[inst.D + 1].data
+					local template = constants[inst.D + 1]
 					local serialized = {}
 					for _, id in ipairs(template) do
-						serialized[constants[id + 1].data] = nil
+						serialized[constants[id + 1]] = nil
 					end
 					stack[inst.A] = serialized
 				elseif op == 55 then --[[ SETLIST ]]
@@ -627,11 +635,12 @@ local function luau_load(module, env)
 						end
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
-					local limit = stack[inst.A]
-					local step = stack[inst.A + 1]
-					local index = stack[inst.A + 2] + step
+					local A = inst.A
+					local limit = stack[A]
+					local step = stack[A + 1]
+					local index = stack[A + 2] + step
 
-					stack[inst.A + 2] = index
+					stack[A + 2] = index
 
 					if step > 0 then
 						if index <= limit then
@@ -696,7 +705,7 @@ local function luau_load(module, env)
 
 					table.move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
-					local newPrototype = module.plist[constants[inst.D + 1].data + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
+					local newPrototype = protolist[constants[inst.D + 1] + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
 					local upvalues = {}
 
@@ -731,8 +740,8 @@ local function luau_load(module, env)
 					local aux = code[pc].value
 					pc += 1
 					local kv = constants[aux + 1]
-					assert(kv.type == "string", "LOADKX encountered non-string constant!")
-					stack[inst.A] = kv.data
+					assert(type(kv) == "string", "LOADKX encountered non-string constant!")
+					stack[inst.A] = kv
 				elseif op == 67 then --[[ JUMPX ]]
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
@@ -783,18 +792,18 @@ local function luau_load(module, env)
 				elseif op == 79 then --[[ JUMPXEQKN ]]
 					local aux = code[pc].value
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
-					assert(kv.type == "number", "JUMPXEQKN encountered non-number constant!")
+					assert(type(kv) == "number", "JUMPXEQKN encountered non-number constant!")
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
-						pc += if A == kv.data then inst.D else 1
+						pc += if A == kv then inst.D else 1
 					else
-						pc += if A ~= kv.data then inst.D else 1
+						pc += if A ~= kv then inst.D else 1
 					end
 				elseif op == 80 then --[[ JUMPXEQKS ]]
 					local aux = code[pc].value
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
-					assert(kv.type == "string", "JUMPXEQKS encountered non-string constant!")
-					if ((kv.data == stack[inst.A]) and 0 or 1) ~= bit32.rshift(aux, 31) then 
+					assert(type(kv) == "string", "JUMPXEQKS encountered non-string constant!")
+					if ((kv == stack[inst.A]) and 0 or 1) ~= bit32.rshift(aux, 31) then 
 						pc += inst.D 
 					else 
 						pc += 1

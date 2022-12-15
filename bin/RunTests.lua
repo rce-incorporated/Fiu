@@ -8,7 +8,7 @@ local allTests = {
 }
 
 local specificTests = {
-	"WrapperTest"
+	"CLOSE"
 }
 
 

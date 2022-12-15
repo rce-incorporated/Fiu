@@ -1,5 +1,16 @@
 local FIU_DEBUGGING = true
-local string_unpack = string.unpack --// string.unpack does not have a builtin so its faster to make it local
+
+--// Some functions dont have a builtin so its faster to make them locally accessible, error and string.format don't need them since they stop execution
+local string_unpack = string.unpack 
+local table_pack = table.pack 
+local table_create = table.create
+local table_move = table.move
+local coroutine_create = coroutine.create 
+local coroutine_yield = coroutine.yield 
+local coroutine_resume = coroutine.resume
+local to_number = tonumber
+local protected_call = pcall
+
 
 local function luau_newmodule()
 	return {
@@ -23,6 +34,7 @@ AB - 2
 ABC - 3
 AD - 4
 AE - 5 
+true - has aux data
 ]]
 local op_list = {
 	{ "NOP", 0 },
@@ -78,9 +90,9 @@ local op_list = {
 	{ "NOT", 2 },
 	{ "MINUS", 2 },
 	{ "LENGTH", 2 },
-	{ "NEWTABLE", 2 },
+	{ "NEWTABLE", 2, true },
 	{ "DUPTABLE", 4 },
-	{ "SETLIST", 3 },
+	{ "SETLIST", 3, true },
 	{ "FORNPREP", 4 },
 	{ "FORNLOOP", 4 },
 	{ "FORGLOOP", 4, true },
@@ -162,10 +174,12 @@ local function luau_deserialize(bytecode)
 
 	local function read_instruction(codelist)
 		local i = {}
+
 		local value = read_integer()
 		local opcode = bit32.band(value, 0xFF)
 		i.value = value
 		i.opcode = opcode
+
 		local info = op_list[opcode + 1]
 		i.opname = info[1]
 
@@ -192,14 +206,11 @@ local function luau_deserialize(bytecode)
 		end
 
 		if table.find(extended_op_list, opcode + 1) then 
-			isExtended = true
-
 			local aux = read_integer()
-
 			i.aux = aux
 
 			table.insert(codelist, i)
-			table.insert(codelist, {value = aux})
+			table.insert(codelist, {value = aux}) --// Includes data in list to not break jumps, loops, etc
 
 			return true
 		end
@@ -367,7 +378,7 @@ local function luau_load(module, env)
 					local uv = upvals[inst.B + 1]
 					uv.store[uv.index] = stack[inst.A]
 				elseif op == 11 then --[[ CLOSEUPVALS ]]
-					for i, uv in pairs(open_upvalues) do
+					for i, uv in open_upvalues do
 						if uv.index >= inst.A then
 							uv.value = uv.store[uv.index]
 							uv.store = uv
@@ -467,7 +478,7 @@ local function luau_load(module, env)
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
-					local ret_list = table.pack(stack[A](table.unpack(stack, A + 1, A + params)))
+					local ret_list = table_pack(stack[A](table.unpack(stack, A + 1, A + params)))
 
 					local ret_num = ret_list.n
 
@@ -477,7 +488,7 @@ local function luau_load(module, env)
 						ret_num = C - 1
 					end
 
-					table.move(ret_list, 1, ret_num, A, stack)
+					table_move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
 					local A = inst.A
 					local B = inst.B 
@@ -604,16 +615,19 @@ local function luau_load(module, env)
 				elseif op == 52 then --[[ LENGTH ]]
 					stack[inst.A] = #stack[inst.B]
 				elseif op == 53 then --[[ NEWTABLE ]]
-					stack[inst.A] = table.create(code[pc].value)
-					pc += 1
+					pc += 1 --// adjust for aux 
+
+					stack[inst.A] = table_create(inst.aux)
 				elseif op == 54 then --[[ DUPTABLE ]]
 					local template = constants[inst.D + 1]
 					local serialized = {}
-					for _, id in ipairs(template) do
+					for _, id in template do
 						serialized[constants[id + 1]] = nil
 					end
 					stack[inst.A] = serialized
 				elseif op == 55 then --[[ SETLIST ]]
+					pc += 1 --// adjust for aux 
+
 					local A = inst.A
 					local B = inst.B
 					local c = inst.C - 1
@@ -622,51 +636,52 @@ local function luau_load(module, env)
 						c = top - B
 					end
 
-					local index = code[pc].value
-					pc += 1
-
-					table.move(stack, B, B + c, index, stack[A])
+					table_move(stack, B, B + c, inst.aux, stack[A])
 				elseif op == 56 then --[[ FORNPREP ]]
 					local A = inst.A
 					local limit = stack[A]
 					if type(limit) ~= "number" then
-						local number = tonumber(limit)
+						local number = to_number(limit)
 
 						if number == nil then
 							error("invalid 'for' limit (number expected)")
 						end
 
 						stack[A] = number
+						limit = number
 					end
 					local step = stack[A + 1]
 					if type(step) ~= "number" then
-						local number = tonumber(step)
+						local number = to_number(step)
 
 						if number == nil then
 							error("invalid 'for' step (number expected)")
 						end
 
 						stack[A + 1] = number
+						step = number
 					end
 					local index = stack[A + 2]
 					if type(index) ~= "number" then
-						local number = tonumber(index)
+						local number = to_number(index)
 
 						if number == nil then
 							error("invalid 'for' index (number expected)")
 						end
 
 						stack[A + 2] = number
+						index = number
 					end
 
-					if step > 0 then
-						if index >= limit then
-							pc += inst.D
-						end
+					local loops = false
+					if step == math.abs(step) then
+						loops = index >= limit
 					else
-						if limit >= index then
-							pc += inst.D
-						end
+						loops = index <= limit
+					end
+
+					if loops then 
+						pc += inst.D
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
 					local A = inst.A
@@ -674,16 +689,16 @@ local function luau_load(module, env)
 					local step = stack[A + 1]
 					local index = stack[A + 2] + step
 
-					stack[A + 2] = index
-
-					if step > 0 then
-						if index <= limit then
-							pc += inst.D
-						end
+					local loops = false
+					if step == math.abs(step) then
+						loops = index <= limit
 					else
-						if limit <= index then
-							pc += inst.D
-						end
+						loops = index >= limit
+					end
+
+					if loops then 
+						stack[A + 2] = index
+						pc += inst.D
 					end
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
@@ -696,7 +711,7 @@ local function luau_load(module, env)
 					if type(it) == "function" then 
 						local vals = { stack[A](stack[A + 1], stack[A + 2]) }
 
-						table.move(vals, 1, aux, A + 3, stack)
+						table_move(vals, 1, aux, A + 3, stack)
 
 						if stack[A + 3] ~= nil then
 							stack[A + 2] = stack[A + 3]
@@ -705,12 +720,12 @@ local function luau_load(module, env)
 							pc += 1
 						end
 					else 
-						local errored, vals = coroutine.resume(generalized_iterators[inst])
+						local errored, vals = coroutine_resume(generalized_iterators[inst])
 
 						if vals == LUA_GENERALIZED_TERMINATOR then 
 							pc += 1
 						else 
-							table.move(vals, 1, aux, A + 3, stack)
+							table_move(vals, 1, aux, A + 3, stack)
 
 							stack[A + 2] = stack[A + 3]
 							pc += inst.D
@@ -737,7 +752,7 @@ local function luau_load(module, env)
 						top = A + b - 1
 					end
 
-					table.move(varargs.list, 1, b, A, stack)
+					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local newPrototype = protolist[constants[inst.D + 1] + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
@@ -796,15 +811,15 @@ local function luau_load(module, env)
 						local loopInstruction = code[pc + inst.D]
 						if generalized_iterators[loopInstruction] == nil then 
 							--// Thanks @bmcq-0 and @memcorrupt for the spoonfeed
-							function iterator()
+							local function iterator()
 								for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in it do 
-									coroutine.yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
+									coroutine_yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
 								end
 
-								coroutine.yield(LUA_GENERALIZED_TERMINATOR)
+								coroutine_yield(LUA_GENERALIZED_TERMINATOR)
 							end
 
-							generalized_iterators[loopInstruction] = coroutine.create(iterator)
+							generalized_iterators[loopInstruction] = coroutine_create(iterator)
 						end
 					end
 
@@ -852,28 +867,28 @@ local function luau_load(module, env)
 			end
 		end
 		local function wrapped(...)
-			local passed = table.pack(...)
-			local stack = table.create(proto.maxstacksize)
+			local passed = table_pack(...)
+			local stack = table_create(proto.maxstacksize)
 			local varargs = {
 				len = 0,
 				list = {},
 			}
 
-			table.move(passed, 1, proto.numparams, 0, stack)
+			table_move(passed, 1, proto.numparams, 0, stack)
 
 			if proto.numparams < passed.n then
 				local start = proto.numparams + 1
 				local len = passed.n - proto.numparams
 				varargs.len = len
-				table.move(passed, start, start + len - 1, 1, varargs.list)
+				table_move(passed, start, start + len - 1, 1, varargs.list)
 			end
 
 			local debugging = {}
 			local result
 			if not FIU_DEBUGGING then --// for debugging issues
-				result = table.pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
+				result = table_pack(protected_call(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
 			else
-				result = table.pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
+				result = table_pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
 			end
 
 			if result[1] then

@@ -2,6 +2,8 @@
 
 Pronounced like "Phew". This software aims to provide a decently fast and reliable way of executing Luau bytecode under other Lua environments without the use of `loadstring`. For the purpose of anything from sandboxing to reimplementing arbitrary execution, this should serve your needs.
 
+Fiu does not taint the environment if you pass it a table of functions or a wrapper around `getfenv` using `__index` so it should not deoptimise the environment.
+
 Note that only an interpreter is provided, and compiled code must be obtained from some external source.
 
 Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.

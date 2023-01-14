@@ -10,7 +10,7 @@ REMARK builtin math.floor/1
     5: print((function() upvalue = math.floor(5) return upvalue end)())
 LOADN R1 5
 FASTCALL1 12 R1 L0
-GETIMPORT R0 2
+GETIMPORT R0 2 [math.floor]
 CALL R0 1 1
 L0: SETUPVAL R0 0
 GETUPVAL R0 0
@@ -18,18 +18,18 @@ RETURN R0 1
 
 Function 2 (??):
     1: print((function() return 5 end)())
-GETIMPORT R0 1
-DUPCLOSURE R1 K2
+GETIMPORT R0 1 [print]
+DUPCLOSURE R1 K2 []
 CALL R1 0 -1
 CALL R0 -1 0
 REMARK builtin math.floor/1
     3: local upvalue = math.floor(1)
 LOADN R1 1
 FASTCALL1 12 R1 L0
-GETIMPORT R0 5
+GETIMPORT R0 5 [math.floor]
 CALL R0 1 1
     5: print((function() upvalue = math.floor(5) return upvalue end)())
-L0: GETIMPORT R1 1
+L0: GETIMPORT R1 1 [print]
 REMARK allocation: closure with 1 upvalues
 NEWCLOSURE R2 P1
 CAPTURE REF R0

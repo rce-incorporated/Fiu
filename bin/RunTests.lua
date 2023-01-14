@@ -12,7 +12,7 @@ local specificTests = {
 }
 
 
-for i,v in specificTests do
+for i,v in allTests do
 	print(string.format(">>>>>>>> RUNNING TEST: %s <<<<<<<<", v))
 	print("--------->> BYTECODE LISTING <<---------")
 	print(require("Listings/"..v)())

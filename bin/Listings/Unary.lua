@@ -2,31 +2,31 @@
 return function()
 	return [[Function 0 (??):
     1: print(-math.floor(1))
-GETIMPORT R0 1
+GETIMPORT R0 1 [print]
 REMARK builtin math.floor/1
 LOADN R3 1
 FASTCALL1 12 R3 L0
-GETIMPORT R2 4
+GETIMPORT R2 4 [math.floor]
 CALL R2 1 1
 L0: MINUS R1 R2
 CALL R0 1 0
     2: print(#string.sub("Hello World", 1, 5))
-GETIMPORT R0 1
+GETIMPORT R0 1 [print]
 REMARK builtin string.sub/3
-LOADK R3 K5
+LOADK R3 K5 ['Hello World']
 LOADN R4 1
 LOADN R5 5
 FASTCALL 45 L1
-GETIMPORT R2 8
+GETIMPORT R2 8 [string.sub]
 CALL R2 3 1
 L1: LENGTH R1 R2
 CALL R0 1 0
     3: print(not math.floor(1))
-GETIMPORT R0 1
+GETIMPORT R0 1 [print]
 REMARK builtin math.floor/1
 LOADN R3 1
 FASTCALL1 12 R3 L2
-GETIMPORT R2 4
+GETIMPORT R2 4 [math.floor]
 CALL R2 1 1
 L2: NOT R1 R2
 CALL R0 1 0

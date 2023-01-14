@@ -11,9 +11,9 @@ SETTABLEN R1 R0 1
 GETTABLEN R1 R0 1
     4: t["hash"] = 1
 LOADN R2 1
-SETTABLEKS R2 R0 K0
+SETTABLEKS R2 R0 K0 ['hash']
     5: local k = t["hash"]
-GETTABLEKS R2 R0 K0
+GETTABLEKS R2 R0 K0 ['hash']
 REMARK allocation: table hash 0
     6: t[t] = {}
 NEWTABLE R3 0 0
@@ -21,7 +21,7 @@ SETTABLE R3 R0 R0
     7: local n = t[t]
 GETTABLE R3 R0 R0
     8: print(t,v,k,n)
-GETIMPORT R4 2
+GETIMPORT R4 2 [print]
 MOVE R5 R0
 MOVE R6 R1
 MOVE R7 R2

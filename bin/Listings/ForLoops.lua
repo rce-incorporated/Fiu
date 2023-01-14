@@ -7,13 +7,13 @@ LOADN R0 10
 LOADN R1 1
 FORNPREP R0 L2
     2:  	if i == 5 then 
-L0: JUMPXEQKN R2 K0 L1
+L0: JUMPXEQKN R2 K0 L1 [5]
     5:  	print(i)
-GETIMPORT R3 2
+GETIMPORT R3 2 [print]
 MOVE R4 R2
 CALL R3 1 0
     6:  	if i == 8 then 
-JUMPXEQKN R2 K3 L2
+JUMPXEQKN R2 K3 L2 [8]
     1: for i = 1, 10 do 
 L1: FORNLOOP R0 L0
 REMARK allocation: table array 3
@@ -27,7 +27,7 @@ LOADNIL R1
 LOADNIL R2
 FORGPREP R0 L4
    12: 	print(i,v)
-L3: GETIMPORT R5 2
+L3: GETIMPORT R5 2 [print]
 MOVE R6 R3
 MOVE R7 R4
 CALL R5 2 0

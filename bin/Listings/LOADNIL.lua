@@ -6,7 +6,7 @@ LOADN R0 1
     2: a = nil
 LOADNIL R0
     3: print(a)
-GETIMPORT R1 1
+GETIMPORT R1 1 [print]
 MOVE R2 R0
 CALL R1 1 0
     4: 

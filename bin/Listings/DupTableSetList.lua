@@ -6,13 +6,13 @@ REMARK allocation: table template 3
 DUPTABLE R0 3
     2:   a = 1,
 LOADN R1 1
-SETTABLEKS R1 R0 K0
+SETTABLEKS R1 R0 K0 ['a']
     3:   b = 2,
 LOADN R1 2
-SETTABLEKS R1 R0 K1
+SETTABLEKS R1 R0 K1 ['b']
     4:   c = 3,
 LOADN R1 3
-SETTABLEKS R1 R0 K2
+SETTABLEKS R1 R0 K2 ['c']
 REMARK allocation: table array 44
     7: local c = {
 NEWTABLE R1 0 44
@@ -65,7 +65,7 @@ MOVE R12 R0
 MOVE R13 R0
 SETLIST R1 R2 12 [33]
    11: print(a,c,#a,#c)
-GETIMPORT R2 5
+GETIMPORT R2 5 [print]
 MOVE R3 R0
 MOVE R4 R1
 LENGTH R5 R0

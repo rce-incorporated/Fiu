@@ -4,29 +4,29 @@ return function()
     1: local a = 1 
 LOADN R0 1
     2: while a ~= 10 do 
-L0: JUMPXEQKN R0 K0 L1
+L0: JUMPXEQKN R0 K0 L1 [10]
     3:     a = a + 1
-ADDK R0 R0 K1
+ADDK R0 R0 K1 [1]
     4:     print(a)
-GETIMPORT R1 3
+GETIMPORT R1 3 [print]
 MOVE R2 R0
 CALL R1 1 0
     2: while a ~= 10 do 
 JUMPBACK L0
     7: print('REPEAT!')
-L1: GETIMPORT R1 3
-LOADK R2 K4
+L1: GETIMPORT R1 3 [print]
+LOADK R2 K4 ['REPEAT!']
 CALL R1 1 0
     9: local a = 1
 LOADN R1 1
    11:     a = a + 1
-L2: ADDK R1 R1 K1
+L2: ADDK R1 R1 K1 [1]
    12:     print(a)
-GETIMPORT R2 3
+GETIMPORT R2 3 [print]
 MOVE R3 R1
 CALL R2 1 0
    13: until a == 10
-JUMPXEQKN R1 K0 L3
+JUMPXEQKN R1 K0 L3 [10]
 JUMPBACK L2
    14: 
 L3: RETURN R0 0

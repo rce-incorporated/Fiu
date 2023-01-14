@@ -2,25 +2,25 @@
 return function()
 	return [[Function 0 (??):
     1: local a = "He"
-LOADK R0 K0
+LOADK R0 K0 ['He']
     3: a = a .. "llo"
 MOVE R1 R0
-LOADK R2 K1
+LOADK R2 K1 ['llo']
 CONCAT R0 R1 R2
     4: a = a .. " "
 MOVE R1 R0
-LOADK R2 K2
+LOADK R2 K2 [' ']
 CONCAT R0 R1 R2
     5: a = a .. "Wo"
 MOVE R1 R0
-LOADK R2 K3
+LOADK R2 K3 ['Wo']
 CONCAT R0 R1 R2
     6: a = a .. "rld"
 MOVE R1 R0
-LOADK R2 K4
+LOADK R2 K4 ['rld']
 CONCAT R0 R1 R2
     8: print(a)
-GETIMPORT R1 6
+GETIMPORT R1 6 [print]
 MOVE R2 R0
 CALL R1 1 0
     9: 

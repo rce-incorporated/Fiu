@@ -2,7 +2,7 @@
 return function()
 	return [[Function 0 (??):
     4:         print(i)
-GETIMPORT R0 1
+GETIMPORT R0 1 [print]
 GETUPVAL R1 0
 CALL R0 1 0
     5:     end

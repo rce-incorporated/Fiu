@@ -29,4 +29,4 @@ If you are going to use `Source.lua` on the repository instead of the [releases]
 
 <div>Luau updates often and Fiu will need to be updated and have working releases added for every new version.</div>
 
-Written by [TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/) and [Rerumu](https://github.com/Rerumu/)
+<br>Written by [TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/) and [Rerumu](https://github.com/Rerumu/)

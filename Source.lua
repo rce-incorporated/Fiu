@@ -498,7 +498,7 @@ local function luau_load(module, env)
 					if b == LUA_MULTRET then
 						nresults = top - A + 1
 					else
-						nresults = A + B - 1
+						nresults = A + B - 1 - proto.numparams
 					end
 
 					return table.unpack(stack, A, A + nresults - 1)

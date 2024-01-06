@@ -1,4 +1,4 @@
-**The Luau team is working on v4 of the bytecode format and when that release Fiu will need time to update!**
+**Progress resumes in February, pull requests and issues are appreciated!**
 
 # [Fiu](https://github.com/TheGreatSageEqualToHeaven/Fiu/blob/main/Source.lua)
 

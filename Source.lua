@@ -108,8 +108,8 @@ local op_list = {
 	{ "FASTCALL", 3 },
 	{ "COVERAGE", 5 },
 	{ "CAPTURE", 2 },
-	{ "LOP_DEP_JUMPIFEQK", 0 },
-	{ "LOP_DEP_JUMPIFNOTEQK", 0 },
+	{ "SUBRK", 3 }, --// Previously DEP_JUMPIFEQK
+	{ "DIVRK", 3 }, --// Previously DEP_JUMPIFNOTEQK
 	{ "FASTCALL1", 3 },
 	{ "FASTCALL2", 3, true },
 	{ "FASTCALL2K", 3, true },
@@ -141,6 +141,20 @@ local function luau_deserialize(bytecode)
 		position = position + 1
 		return b
 	end
+
+	local luauVersion = read_byte()
+	
+	if luauVersion == 0 then 
+		error("The bytecode that was passed was an error message!", 0)
+	end 
+
+	if luauVersion < 3 or luauVersion > 5 then
+		error("Unsupported bytecode provided!", 0)
+	end 
+
+	if luauVersion >= 4 then
+		module.typesversion = read_byte()
+	end 
 
 	local function read_integer()
 		local int = string_unpack("I4", bytecode, position)
@@ -227,6 +241,20 @@ local function luau_deserialize(bytecode)
 		p.nups = read_byte()
 		p.isvararg = read_byte() ~= 0
 
+		if luauVersion >= 4 then
+			read_byte() --// flags 
+			
+			local LBC_TYPE_VERSION = 1
+
+			local typesize = read_variable_integer()
+			
+			if typesize > 0 then
+				--// TODO
+			end 
+
+			position = position + typesize
+		end 
+
 		local codelist = p.code
 		local sizecode = read_variable_integer()
 		p.sizecode = sizecode
@@ -308,11 +336,6 @@ local function luau_deserialize(bytecode)
 		return p
 	end
 
-	local luauVersion = read_byte()
-	if luauVersion ~= 3 then
-		error("Incorrect Bytecode Provided", 0)
-	end
-
 	local stringCount = read_variable_integer()
 	for i = 1, stringCount do
 		table.insert(stringList, read_string())
@@ -362,14 +385,12 @@ local function luau_load(module, env)
 				elseif op == 7 then --[[ GETGLOBAL ]]
 					pc += 1
 
-					local kv = constants[aux + 1]
-					assert(type(kv) == "string", "GETGLOBAL encountered non-string constant!")
+					local kv = constants[inst.aux + 1]
 					stack[inst.A] = env[kv]
 				elseif op == 8 then --[[ SETGLOBAL ]]
 					pc += 1 --// adjust for aux 
 
 					local kv = constants[inst.aux + 1]
-					assert(type(kv) == "string", "GETGLOBAL encountered non-string constant!")
 					env[kv] = stack[inst.A]
 				elseif op == 9 then --[[ GETUPVAL ]]
 					local uv = upvals[inst.B + 1]
@@ -379,7 +400,7 @@ local function luau_load(module, env)
 					uv.store[uv.index] = stack[inst.A]
 				elseif op == 11 then --[[ CLOSEUPVALS ]]
 					for i, uv in open_upvalues do
-						if uv.index >= inst.A then
+						if uv.index > inst.A then
 							uv.value = uv.store[uv.index]
 							uv.store = uv
 							uv.index = "value" --// self reference
@@ -418,9 +439,9 @@ local function luau_load(module, env)
 					local index = constants[inst.aux + 1]
 					stack[inst.B][index] = stack[inst.A]
 				elseif op == 17 then --[[ GETTABLEN ]]
-					stack[inst.A] = stack[inst.B][inst.C]
+					stack[inst.A] = stack[inst.B][inst.C + 1]
 				elseif op == 18 then --[[ SETTABLEN ]]
-					stack[inst.B][inst.C] = stack[inst.A]
+					stack[inst.B][inst.C + 1] = stack[inst.A]
 				elseif op == 19 then --[[ NEWCLOSURE ]]
 					local newPrototype = protolist[inst.D + 1]
 
@@ -428,11 +449,8 @@ local function luau_load(module, env)
 
 					for i = 1, newPrototype.nups do
 						local pseudo = code[pc]
-						local cop = pseudo.opcode
 
 						pc += 1
-
-						assert(cop == 70, "Unhandled opcode passed to NEWCLOSURE")
 
 						local type = pseudo.A
 
@@ -470,7 +488,6 @@ local function luau_load(module, env)
 					local B = inst.B
 
 					local kv = constants[inst.aux + 1]
-					assert(type(kv) == "string", "NAMECALL encountered non-string constant!")
 
 					stack[A + 1] = stack[B]
 					stack[A] = stack[B][kv]
@@ -636,7 +653,7 @@ local function luau_load(module, env)
 						c = top - B
 					end
 
-					table_move(stack, B, B + c, inst.aux, stack[A])
+					table_move(stack, B, B + c - 1, inst.aux, stack[A])
 				elseif op == 56 then --[[ FORNPREP ]]
 					local A = inst.A
 					local limit = stack[A]
@@ -764,8 +781,6 @@ local function luau_load(module, env)
 
 						pc += 1
 
-						assert(cop == 70, "Unhandled opcode passed to DUPCLOSURE")
-
 						local type = pseudo.A
 
 						if type == 0 then --// value
@@ -789,7 +804,6 @@ local function luau_load(module, env)
 					pc += 1 --// adjust for aux 
 
 					local kv = constants[inst.aux + 1]
-					assert(type(kv) == "string", "LOADKX encountered non-string constant!")
 					stack[inst.A] = kv
 				elseif op == 67 then --[[ JUMPX ]]
 					pc += inst.E
@@ -798,6 +812,10 @@ local function luau_load(module, env)
 				elseif op == 70 then --[[ CAPTURE ]]
 					--[[ Handled by CLOSURE ]]
 					error("Unhandled CAPTURE")
+				elseif op == 71 then --[[ SUBRK ]]
+					stack[inst.A] = constants[inst.B + 1] - stack[inst.C]  
+				elseif op == 72 then --[[ DIVRK ]]
+					stack[inst.A] = constants[inst.B + 1] / stack[inst.C]  
 				elseif op == 73 then --[[ FASTCALL1 ]]
 					--[[ Skipped ]]
 				elseif op == 74 then --[[ FASTCALL2 ]]
@@ -833,7 +851,7 @@ local function luau_load(module, env)
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = inst.aux
 
-					if ((stack[inst.A] and 0 or 1) == (bit32.band(aux, 1) and 0 or 1)) == bit32.rshift(aux, 31) then
+					if ((stack[inst.A] and 1 or 0) == (bit32.band(aux, 1) and 1 or 0) and 1 or 0) == (bit32.rshift(aux, 31)) then
 						pc += inst.D
 					else
 						pc += 1
@@ -842,7 +860,6 @@ local function luau_load(module, env)
 					local aux = inst.aux
 
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
-					assert(type(kv) == "number", "JUMPXEQKN encountered non-number constant!")
 
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
@@ -854,9 +871,8 @@ local function luau_load(module, env)
 					local aux = inst.aux
 
 					local kv = constants[bit32.band(aux, 0xffffff) + 1]
-					assert(type(kv) == "string", "JUMPXEQKS encountered non-string constant!")
 
-					if ((kv == stack[inst.A]) and 0 or 1) ~= bit32.rshift(aux, 31) then 
+					if ((kv == stack[inst.A]) and 1 or 0) ~= bit32.rshift(aux, 31) then 
 						pc += inst.D 
 					else 
 						pc += 1

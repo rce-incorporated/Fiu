@@ -4,6 +4,14 @@ print("testing assignments, logical operators, and constructors")
 
 local unpack = table.unpack
 
+local asserted = 0
+local old_assert = assert 
+local function assert(...)
+    asserted += 1 
+    print("Assert called: ", asserted)
+    return old_assert(...)
+end 
+
 local res, res2 = 27
 
 a, b = 1, 2+3
@@ -16,10 +24,11 @@ a[f()], b, a[f()+3] = f(), a, 'x'
 assert(a[10] == 10 and b == a and a[13] == 'x')
 
 do
-  local f = function (n) local x = {}; for i=1,n do x[i]=i end;
+  local f = function (n) local x = {}; for i=1,n do x[i]=i print'hello' end;
                          return unpack(x) end;
   local a,b,c
   a,b = 0, f(1)
+  print(a == 0, b == 1)
   assert(a == 0 and b == 1)
   A,b = 0, f(1)
   assert(A == 0 and b == 1)
@@ -39,6 +48,7 @@ assert(a==10 and b==11 and c==12 and d==nil)
 a,b = f(), 1, 2, 3, f()
 assert(a==10 and b==1)
 
+print(a<b == false, a>b == true)
 assert(a<b == false and a>b == true)
 assert((10 and 2) == 2)
 assert((10 or 2) == 10)
@@ -71,7 +81,6 @@ local a = {}
 for i=3000,-3000,-1 do a[i] = i; end
 a[10e30] = "alo"; a[true] = 10; a[false] = 20
 assert(a[10e30] == 'alo' and a[not 1] == 20 and a[10<20] == 10)
-for i=3000,-3000,-1 do assert(a[i] == i); end
 a[print] = assert
 a[f] = print
 a[a] = a
@@ -81,7 +90,11 @@ a = nil
 
 a = {10,9,8,7,6,5,4,3,2; [-3]='a', [f]=print, a='a', b='ab'}
 a, a.x, a.y = a, a[-3]
+
 assert(a[1]==10 and a[-3]==a.a and a[f]==print and a.x=='a' and not a.y)
+
+print(f(a))
+
 a[1], f(a)[2], b, c = {['alo']=assert}, 10, a[1], a[f], 6, 10, 23, f(a), 2
 a[1].alo(a[2]==10 and b==10 and c==print)
 

@@ -13,7 +13,7 @@ Fiu is in a working state but bugs and side effects can be encountered! Open an 
 **Vector constants are currently not supported!**
 
 # Usage
-If you are going to use `Source.lua` on the repository instead of the [releases](https://github.com/TheGreatSageEqualToHeaven/Fiu/releases) you will need to set `FIU_DEBUGGING` to false at the top of the file
+Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top of the file.
 
 - `luau_load(bytecode | chunk, env)` <div>Used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.</div>
 - `luau_deserialize(bytecode)` <div>Used to deserialise bytecode.</div>

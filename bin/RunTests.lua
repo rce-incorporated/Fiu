@@ -1,11 +1,11 @@
 local TEST_ALL = false;
 local TEST_CONFORMANCE = false;
-local TEST_STAGING = false;
-local TEST_SPECIFIC = true;
+local TEST_STAGING = true;
+local TEST_SPECIFIC = false;
 
 local TEST_IF_OK = false;
 
-local OUTPUT_DEBUG = true;
+local OUTPUT_DEBUG = false;
 
 local fiu = require("../Source");
 
@@ -57,13 +57,18 @@ local stagingTests = {
 	"Varargs",
 	"GenericFor",
 	"ForLoops",
-	"Returns"
+	"Returns",
+	"BasicReturn",
+
+	--// Bug reports
+	"Issue4",
+	"Issue5",
 };
 
 local specificTests = {
 	{
-		true,
-		"attrib"
+		false,
+		"BasicReturn"
 	}
 };
 

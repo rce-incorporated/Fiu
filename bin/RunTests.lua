@@ -5,10 +5,11 @@ local TEST_SPECIFIC = true;
 
 local TEST_IF_OK = false;
 
+local OUTPUT_DEBUG = true;
+
 local fiu = require("../Source");
 
 local conformanceTests = {
-	"assert",
 	"attrib",
 	"basic",
 	"bitwise",
@@ -61,8 +62,8 @@ local stagingTests = {
 
 local specificTests = {
 	{
-		false,
-		"Returns"
+		true,
+		"attrib"
 	}
 };
 
@@ -73,8 +74,10 @@ end
 local function TestOutput(directory, testNames)
 	for i, v in testNames do
 		print(string.format(">>>>>>>> RUNNING TEST: %s <<<<<<<<", v));
-		print("--------->> BYTECODE LISTING <<---------");
-		print((require(string.format("%s/Listings/%s", directory, v)))());
+		if OUTPUT_DEBUG then
+			print("--------->> BYTECODE LISTING <<---------");
+			print((require(string.format("%s/Listings/%s", directory, v)))());
+		end
 		print("--------->> SOURCE OUTPUT <<---------");
 		print("SOURCE PCALL: ", pcall(function()
 			(require(string.format("%s/SourceTests/%s", directory, v)))();

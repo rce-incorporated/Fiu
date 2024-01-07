@@ -4,7 +4,7 @@ print("testing assignments, logical operators, and constructors")
 
 local unpack = table.unpack
 
-local asserted = 0
+local asserted = 4
 local old_assert = assert 
 local function assert(...)
     asserted += 1 

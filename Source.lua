@@ -1,7 +1,6 @@
 local FIU_DEBUGGING = true
 
 --// Some functions dont have a builtin so its faster to make them locally accessible, error and string.format don't need them since they stop execution
---// TODO: Remove this
 local string_unpack = string.unpack 
 local table_pack = table.pack 
 local table_create = table.create
@@ -403,7 +402,7 @@ local function luau_load(module, env)
 					uv.store[uv.index] = stack[inst.A]
 				elseif op == 11 then --[[ CLOSEUPVALS ]]
 					for i, uv in open_upvalues do
-						if uv.index > inst.A then
+						if uv.index >= inst.A then
 							uv.value = uv.store[uv.index]
 							uv.store = uv
 							uv.index = "value" --// self reference
@@ -518,7 +517,7 @@ local function luau_load(module, env)
 					if b == LUA_MULTRET then
 						nresults = top - A + 1
 					else
-						nresults = A + B - 1 - proto.numparams
+						nresults = B - 1
 					end
 
 					return table.unpack(stack, A, A + nresults - 1)
@@ -693,33 +692,33 @@ local function luau_load(module, env)
 						index = number
 					end
 
-					local loops = false
-					if step == math.abs(step) then
-						loops = index >= limit
-					else
-						loops = index <= limit
-					end
-
-					if loops then 
-						pc += inst.D
-					end
+					if step > 0 then 
+						if index > limit then 
+							pc += inst.D 
+						end 
+					else 
+						if limit > index then 
+							pc += inst.D
+						end 
+					end 
 				elseif op == 57 then --[[ FORNLOOP ]]
 					local A = inst.A
 					local limit = stack[A]
 					local step = stack[A + 1]
 					local index = stack[A + 2] + step
 
-					local loops = false
-					if step == math.abs(step) then
-						loops = index <= limit
-					else
-						loops = index >= limit
-					end
+					stack[A + 2] = index
 
-					if loops then 
-						stack[A + 2] = index
-						pc += inst.D
-					end
+					if step > 0 then 
+						if index <= limit then 
+							pc += inst.D 
+						end 
+					else 
+						if limit <= index then 
+							
+							pc += inst.D
+						end 
+					end 
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
 					local aux = inst.aux
@@ -854,7 +853,7 @@ local function luau_load(module, env)
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local aux = inst.aux
 
-					if ((stack[inst.A] and 1 or 0) == (bit32.band(aux, 1) and 1 or 0) and 1 or 0) == (bit32.rshift(aux, 31)) then
+					if ((stack[inst.A] and true or false) == (bit32.band(aux, 1) == 1 and true or false) and 0 or 1) == (bit32.rshift(aux, 31)) then
 						pc += inst.D
 					else
 						pc += 1
@@ -866,6 +865,7 @@ local function luau_load(module, env)
 
 					local A = stack[inst.A]
 					if bit32.rshift(aux, 31) == 0 then
+
 						pc += if A == kv then inst.D else 1
 					else
 						pc += if A ~= kv then inst.D else 1

@@ -1,6 +1,7 @@
 local FIU_DEBUGGING = true
 
 --// Some functions dont have a builtin so its faster to make them locally accessible, error and string.format don't need them since they stop execution
+--// TODO: Remove this
 local string_unpack = string.unpack 
 local table_pack = table.pack 
 local table_create = table.create

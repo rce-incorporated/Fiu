@@ -276,27 +276,29 @@ local function luau_deserialize(bytecode)
 			local kt = read_byte()
 			local k
 
-			if kt == 0 then
+			if kt == 0 then --// Nil
 				k = nil
-			elseif kt == 1 then
+			elseif kt == 1 then --// Bool
 				k = read_byte() ~= 0
-			elseif kt == 2 then
+			elseif kt == 2 then --// Number
 				local d = string_unpack("d", bytecode, position)
 				position = position + 8
 				k = d
-			elseif kt == 3 then
+			elseif kt == 3 then --// String
 				k = module.slist[read_variable_integer()]
-			elseif kt == 4 then
+			elseif kt == 4 then --// Import
 				k = read_integer()
-			elseif kt == 5 then
+			elseif kt == 5 then --// Table
 				local data = {}
 				local dataLength = read_variable_integer()
 				for i = 1, dataLength do
 					table.insert(data, read_variable_integer())
 				end
 				k = data
-			elseif kt == 6 then
+			elseif kt == 6 then --// Closure
 				k = read_variable_integer()
+			elseif kt == 7 then --// Vector
+				error("Fiu does not currently support vector constants!", 0)
 			end
 
 			table.insert(klist, k)

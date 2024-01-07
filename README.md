@@ -10,10 +10,7 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.
 
-#### Bugs
-
-- [ ] Upvalue's value in numeric for loop is previous value | See "CLOSE" test
-- [ ] `JUMPXEQKB` condition is incorrect
+**Vector constants are currently not supported!**
 
 # Usage
 If you are going to use `Source.lua` on the repository instead of the [releases](https://github.com/TheGreatSageEqualToHeaven/Fiu/releases) you will need to set `FIU_DEBUGGING` to false at the top of the file

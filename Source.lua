@@ -540,13 +540,13 @@ local function luau_load(module, env)
 						pc += 1
 					end
 				elseif op == 28 then --[[ JUMPIFLE ]]
-					if stack[inst.A] < stack[inst.aux] then
+					if stack[inst.A] <= stack[inst.aux] then
 						pc += inst.D
 					else
 						pc += 1
 					end
 				elseif op == 29 then --[[ JUMPIFLT ]]
-					if stack[inst.A] <= stack[inst.aux] then
+					if stack[inst.A] < stack[inst.aux] then
 						pc += inst.D
 					else
 						pc += 1
@@ -558,13 +558,13 @@ local function luau_load(module, env)
 						pc += inst.D
 					end
 				elseif op == 31 then --[[ JUMPIFNOTLE ]]
-					if stack[inst.A] < stack[inst.aux] then
+					if stack[inst.A] <= stack[inst.aux] then
 						pc += 1
 					else
 						pc += inst.D
 					end
 				elseif op == 32 then --[[ JUMPIFNOTLT ]]
-					if stack[inst.A] <= stack[inst.aux] then
+					if stack[inst.A] < stack[inst.aux] then
 						pc += 1
 					else
 						pc += inst.D

@@ -515,7 +515,7 @@ local function luau_load(module, env)
 					local nresults
 
 					if b == LUA_MULTRET then
-						nresults = top - A + 1
+						nresults = top
 					else
 						nresults = B - 1
 					end

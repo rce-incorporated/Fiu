@@ -255,10 +255,10 @@ local function luau_deserialize(bytecode)
 			elseif kt == 4 then --// Import
 				k = read_integer()
 			elseif kt == 5 then --// Table
-				local data = {}
 				local dataLength = read_varint()
+                local data = table.create(dataLength)
 				for i = 1, dataLength do
-					table.insert(data, read_varint())
+					data[i] = read_varint()
 				end
 				k = data
 			elseif kt == 6 then --// Closure
@@ -344,6 +344,7 @@ local function luau_deserialize(bytecode)
         typesversion = typesversion;
     }
 end
+
 local function luau_load(module, env)
 	if type(module) == "string" then
 		module = luau_deserialize(module)
@@ -733,7 +734,7 @@ local function luau_load(module, env)
 							pc += 1
 						end
 					else 
-						local errored, vals = coroutine_resume(generalized_iterators[inst])
+						local _, vals = coroutine_resume(generalized_iterators[inst])
 
 						if vals == LUA_GENERALIZED_TERMINATOR then 
 							pc += 1
@@ -773,8 +774,6 @@ local function luau_load(module, env)
 
 					for i = 1, newPrototype.nups do
 						local pseudo = code[pc]
-						local cop = pseudo.opcode
-
 						pc += 1
 
 						local type = pseudo.A
@@ -877,12 +876,13 @@ local function luau_load(module, env)
                 elseif op == 81 then --[[ IDIV ]]
                     stack[inst.A] = stack[inst.B] // stack[inst.C]
                 elseif op == 82 then --[[ IDIVK ]]
-                    stack[inst.A] = stack[inst.B] + constants[inst.C + 1]
+                    stack[inst.A] = stack[inst.B] // constants[inst.C + 1]
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
 			end
 		end
+
 		local function wrapped(...)
 			local passed = table_pack(...)
 			local stack = table_create(proto.maxstacksize)
@@ -900,7 +900,7 @@ local function luau_load(module, env)
 				table_move(passed, start, start + len - 1, 1, varargs.list)
 			end
 
-			local debugging = {}
+			local debugging = {pc = 0, name = "NONE"}
 			local result
 			if not FIU_DEBUGGING then --// for debugging issues
 				result = table_pack(protected_call(luau_execute, debugging, stack, proto.protos, proto.code, varargs))

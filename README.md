@@ -16,9 +16,6 @@ Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top
 - `luau_load(bytecode | chunk, env)` <div>Used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.</div>
 - `luau_deserialize(bytecode)` <div>Used to deserialise bytecode.</div>
 
-- `luau_newproto()` <div>Used to build your own prototype.</div>
-- `luau_newmodule()` <div>Used to build your own module.</div>
-
 # Contributing
 
 - Tests can be added and compiled using CreateTests.lua, Lua with the `io` and `os` library is needed.

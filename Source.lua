@@ -1,7 +1,6 @@
 local FIU_DEBUGGING = true
 
 --// Some functions dont have a builtin so its faster to make them locally accessible, error and string.format don't need them since they stop execution
-local string_unpack = string.unpack 
 local table_pack = table.pack 
 local table_create = table.create
 local table_move = table.move
@@ -10,22 +9,6 @@ local coroutine_yield = coroutine.yield
 local coroutine_resume = coroutine.resume
 local to_number = tonumber
 local protected_call = pcall
-
-
-local function luau_newmodule()
-	return {
-		slist = {},
-		plist = {},
-	}
-end
-
-local function luau_newproto()
-	return {
-		code = {},
-		k = {},
-		protos = {},
-	}
-end
 
 --[[
 NOP/REMOVED - 0
@@ -118,53 +101,31 @@ local op_list = {
 	{ "JUMPXEQKB", 4, true },
 	{ "JUMPXEQKN", 4, true },
 	{ "JUMPXEQKS", 4, true },
+    { "IDIV", 3 },
+    { "IDIVK", 3 },
 }
-
-local extended_op_list = {}
-
-for i,v in op_list do 
-	if v[3] then 
-		table.insert(extended_op_list, i)
-	end
-end 
 
 local LUA_MULTRET = -1
 local LUA_GENERALIZED_TERMINATOR = -2
 local function luau_deserialize(bytecode)
-	local position = 1
-	local module = luau_newmodule()
-	local stringList = module.slist
-	local prototypeList = module.plist
+    local stream = buffer.fromstring(bytecode)
+	local position = 0
 
 	local function read_byte()
-		local b = string_unpack(">B", bytecode, position)
+		local b = buffer.readu8(stream, position)
 		position = position + 1
 		return b
 	end
 
-	local luauVersion = read_byte()
-	
-	if luauVersion == 0 then 
-		error("The bytecode that was passed was an error message!", 0)
-	end 
-
-	if luauVersion < 3 or luauVersion > 5 then
-		error("Unsupported bytecode provided!", 0)
-	end 
-
-	if luauVersion >= 4 then
-		module.typesversion = read_byte()
-	end 
-
-	local function read_integer()
-		local int = string_unpack("I4", bytecode, position)
+    local function read_integer()
+		local int = buffer.readu32(stream, position)
 		position = position + 4
 		return int
 	end
 
-	local function read_variable_integer()
+	local function read_varint()
 		local result = 0
-		for i = 0, 7 do
+		for i = 0, 4 do
 			local value = read_byte()
 			result = bit32.bor(result, bit32.lshift(bit32.band(value, 0x7F), i * 7))
 			if bit32.band(value, 0x80) == 0 then
@@ -175,15 +136,32 @@ local function luau_deserialize(bytecode)
 	end
 
 	local function read_string()
-		local size = read_variable_integer()
+		local size = read_varint()
 		local str
 		if size == 0 then
 			return ""
 		else
-			str = string_unpack("c" .. size, bytecode, position)
+			str = buffer.readstring(stream, position, size)
 			position = position + size
 		end
 		return str
+	end
+
+	local luauVersion = read_byte()
+	local typesversion = 0
+	if luauVersion == 0 then 
+		error("The bytecode that was passed was an error message!", 0)
+    elseif luauVersion < 3 or luauVersion > 5 then
+		error("Unsupported bytecode provided!", 0)
+	elseif luauVersion >= 4 then
+		typesversion = read_byte()
+    end
+
+    local stringCount = read_varint()
+    local stringList = table.create(stringCount)
+
+	for i = 1, stringCount do
+		stringList[i] = read_string()
 	end
 
 	local function read_instruction(codelist)
@@ -200,7 +178,6 @@ local function luau_deserialize(bytecode)
 		local optype = info[2]
 		i.type = optype
 
-		local optype = i.type
 		if optype == 3 then --[[ ABC ]]
 			i.A = bit32.band(bit32.rshift(value, 8), 0xFF)
 			i.B = bit32.band(bit32.rshift(value, 16), 0xFF)
@@ -219,7 +196,8 @@ local function luau_deserialize(bytecode)
 			i.E = if temp < 0x800000 then temp else temp - 0x1000000
 		end
 
-		if table.find(extended_op_list, opcode + 1) then 
+        local uses_aux = info[3]
+		if uses_aux then 
 			local aux = read_integer()
 			i.aux = aux
 
@@ -234,30 +212,18 @@ local function luau_deserialize(bytecode)
 		return false
 	end
 
-	local function read_proto()
-		local p = luau_newproto()
-		p.maxstacksize = read_byte()
-		p.numparams = read_byte()
-		p.nups = read_byte()
-		p.isvararg = read_byte() ~= 0
+	local function read_proto(bytecodeid)
+		local maxstacksize = read_byte()
+		local numparams = read_byte()
+		local nups = read_byte()
+		local isvararg = read_byte() ~= 0
 
 		if luauVersion >= 4 then
 			read_byte() --// flags 
-			
-			local LBC_TYPE_VERSION = 1
-
-			local typesize = read_variable_integer()
-			
-			if typesize > 0 then
-				--// TODO
-			end 
-
-			position = position + typesize
 		end 
 
-		local codelist = p.code
-		local sizecode = read_variable_integer()
-		p.sizecode = sizecode
+		local sizecode = read_varint()
+        local codelist = table.create(sizecode)
 
 		local skipnext = false 
 		for i = 1, sizecode do
@@ -269,9 +235,9 @@ local function luau_deserialize(bytecode)
 			skipnext = read_instruction(codelist)
 		end
 
-		local klist = p.k
-		local sizek = read_variable_integer()
-		p.sizek = sizek
+		local sizek = read_varint()
+        local klist = table.create(sizek)
+
 		for i = 1, sizek do
 			local kt = read_byte()
 			local k
@@ -281,39 +247,40 @@ local function luau_deserialize(bytecode)
 			elseif kt == 1 then --// Bool
 				k = read_byte() ~= 0
 			elseif kt == 2 then --// Number
-				local d = string_unpack("d", bytecode, position)
+				local d = buffer.readf64(stream, position)
 				position = position + 8
 				k = d
 			elseif kt == 3 then --// String
-				k = module.slist[read_variable_integer()]
+				k = stringList[read_varint()]
 			elseif kt == 4 then --// Import
 				k = read_integer()
 			elseif kt == 5 then --// Table
 				local data = {}
-				local dataLength = read_variable_integer()
+				local dataLength = read_varint()
 				for i = 1, dataLength do
-					table.insert(data, read_variable_integer())
+					table.insert(data, read_varint())
 				end
 				k = data
 			elseif kt == 6 then --// Closure
-				k = read_variable_integer()
+				k = read_varint()
 			elseif kt == 7 then --// Vector
 				error("Fiu does not currently support vector constants!", 0)
 			end
 
-			table.insert(klist, k)
+            klist[i] = k
 		end
 
-		local sizep = read_variable_integer()
-		local protolist = p.protos
-		p.sizep = sizep
+		local sizep = read_varint()
+		local protolist = table.create(sizep)
+
 		for i = 1, sizep do
-			table.insert(protolist, read_variable_integer())
+			protolist[i] = read_varint()
 		end
 
-		read_variable_integer()
-		read_variable_integer()
+		local linedefined = read_varint()
+		local debugname = stringList[read_varint()]
 
+        -- // lineinfo
 		if read_byte() ~= 0 then
 			local lineGap = read_byte()
 			for i = 1, sizecode do
@@ -325,34 +292,57 @@ local function luau_deserialize(bytecode)
 			end
 		end
 
+        -- // debuginfo
 		if read_byte() ~= 0 then
-			local sizel = read_variable_integer()
+			local sizel = read_varint()
 			for i = 1, sizel do
-				read_variable_integer()
-				read_variable_integer()
-				read_variable_integer()
+				read_varint()
+				read_varint()
+				read_varint()
 				read_byte()
 			end
 		end
 
-		return p
+		return {
+            maxstacksize = maxstacksize;
+            numparams = numparams;
+            nups = nups;
+            isvararg = isvararg;
+            linedefined = linedefined;
+            debugname = debugname;
+
+            sizecode = sizecode;
+            code = codelist;
+
+            sizek = sizek;
+            k = klist;
+
+            sizep = sizep;
+            protos = protolist;
+
+            bytecodeid = bytecodeid;
+        }
 	end
 
-	local stringCount = read_variable_integer()
-	for i = 1, stringCount do
-		table.insert(stringList, read_string())
-	end
+	local protoCount = read_varint()
+    local prototypeList = table.create(protoCount)
 
-	local protoCount = read_variable_integer()
 	for i = 1, protoCount do
-		table.insert(prototypeList, read_proto())
+		prototypeList[i] = read_proto(i - 1)
 	end
 
-	module.mainp = read_variable_integer()
+    local mainp = read_varint()
 
-	assert(position == #bytecode + 1, "Deserializer position mismatch")
+	assert(position == #bytecode, "Deserializer position mismatch")
 
-	return module
+    return {
+        slist = stringList;
+        plist = prototypeList;
+
+        mainp = mainp;
+
+        typesversion = typesversion;
+    }
 end
 local function luau_load(module, env)
 	if type(module) == "string" then
@@ -490,14 +480,18 @@ local function luau_load(module, env)
 					local B = inst.B
 
 					local kv = constants[inst.aux + 1]
+                    local sb = stack[B]
 
-					stack[A + 1] = stack[B]
-					stack[A] = stack[B][kv]
+					stack[A + 1] = sb
+					stack[A] = sb[kv]
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
-					local ret_list = table_pack(stack[A](table.unpack(stack, A + 1, A + params)))
+                    local func = stack[A]
+					local ret_list = table_pack(
+                        func(table.unpack(stack, A + 1, A + params))
+                    )
 
 					local ret_num = ret_list.n
 
@@ -595,28 +589,28 @@ local function luau_load(module, env)
 					stack[inst.A] = stack[inst.B] ^ constants[inst.C + 1]
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
-					if not not value == false then
+					if (not not value) == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 46 then --[[ OR ]]
 					local value = stack[inst.B]
-					if not not value == true then
+					if (not not value) == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = stack[inst.C] or false
 					end
 				elseif op == 47 then --[[ ANDK ]]
 					local value = stack[inst.B]
-					if not not value == false then
+					if (not not value) == false then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1] or false
 					end
 				elseif op == 48 then --[[ ORK ]]
 					local value = stack[inst.B]
-					if not not value == true then
+					if (not not value) == true then
 						stack[inst.A] = value
 					else
 						stack[inst.A] = constants[inst.C + 1] or false
@@ -880,6 +874,10 @@ local function luau_load(module, env)
 					else 
 						pc += 1
 					end
+                elseif op == 81 then --[[ IDIV ]]
+                    stack[inst.A] = stack[inst.B] // stack[inst.C]
+                elseif op == 82 then --[[ IDIVK ]]
+                    stack[inst.A] = stack[inst.B] + constants[inst.C + 1]
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
@@ -923,7 +921,5 @@ end
 
 return {
 	luau_load = luau_load,
-	luau_newproto = luau_newproto,
-	luau_newmodule = luau_newmodule,
 	luau_deserialize = luau_deserialize,
 }

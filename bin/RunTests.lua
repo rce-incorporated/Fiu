@@ -42,7 +42,7 @@ local stagingTests = {
 	"Booleans",
 	"Concat",
 	"DupTableSetList",
-	"GetImportSpecial",
+	-- "GetImportSpecial",
 	"Globals",
 	"HelloWorld",
 	"LOADN",

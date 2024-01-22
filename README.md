@@ -8,7 +8,7 @@ Note that only an interpreter is provided, and compiled code must be obtained fr
 
 Fiu is in a working state but bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any breaking issues.
 
-**Vector constants and integer division are currently not supported!**
+**Vector constants are currently not supported!**
 
 # Usage
 Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top of the file.

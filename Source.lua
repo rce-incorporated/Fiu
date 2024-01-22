@@ -141,7 +141,7 @@ local function luau_deserialize(bytecode)
 		return word
 	end
 
-	local function readVarint()
+	local function readVarInt()
 		local result = 0
 
 		for i = 0, 4 do
@@ -156,7 +156,7 @@ local function luau_deserialize(bytecode)
 	end
 
 	local function readString()
-		local size = readVarint()
+		local size = readVarInt()
 
 		if size == 0 then
 			return ""
@@ -169,16 +169,16 @@ local function luau_deserialize(bytecode)
 	end
 
 	local luauVersion = readByte()
-	local typesversion = 0
+	local typesVersion = 0
 	if luauVersion == 0 then 
 		error("The bytecode that was passed was an error message!",0)
 	elseif luauVersion < 3 or luauVersion > 5 then
 		error("Unsupported bytecode provided!",0)
 	elseif luauVersion >= 4 then
-		typesversion = readByte()
+		typesVersion = readByte()
 	end
 
-	local stringCount = readVarint()
+	local stringCount = readVarInt()
 	local stringList = table_create(stringCount)
 
 	for i = 1, stringCount do
@@ -189,59 +189,59 @@ local function luau_deserialize(bytecode)
 		local value = readWord()
 		local opcode = bit32.band(value, 0xFF)
 
-		local opInfo = opList[opcode + 1]
-		local opName = opInfo[1]
-		local opMode = opInfo[2]
-		local kMode = opInfo[3]
-		local usesAUX = opInfo[4]
+		local opinfo = opList[opcode + 1]
+		local opname = opinfo[1]
+		local opmode = opinfo[2]
+		local kmode = opinfo[3]
+		local usesAux = opinfo[4]
 
 		local inst = {
-			code = opcode;
-			name = opName;
-			opMode = opMode;
-			kMode = kMode;
+			opcode = opcode;
+			name = opname;
+			opmode = opmode;
+			kmode = kmode;
 		}
 
 		table.insert(codeList, inst)
 
-		if opMode == 1 then --[[ A ]]
+		if opmode == 1 then --[[ A ]]
 			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
-		elseif opMode == 2 then --[[ AB ]]
+		elseif opmode == 2 then --[[ AB ]]
 			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
 			inst.B = bit32.band(bit32.rshift(value, 16), 0xFF)
-		elseif opMode == 3 then --[[ ABC ]]
+		elseif opmode == 3 then --[[ ABC ]]
 			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
 			inst.B = bit32.band(bit32.rshift(value, 16), 0xFF)
 			inst.C = bit32.band(bit32.rshift(value, 24), 0xFF)
-		elseif opMode == 4 then --[[ AD ]]
+		elseif opmode == 4 then --[[ AD ]]
 			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
 			local temp = bit32.band(bit32.rshift(value, 16), 0xFFFF)
 			inst.D = if temp < 0x8000 then temp else temp - 0x10000
-		elseif opMode == 5 then --[[ AE ]]
+		elseif opmode == 5 then --[[ AE ]]
 			local temp = bit32.band(bit32.rshift(value, 8), 0xFFFFFF)
 			inst.E = if temp < 0x800000 then temp else temp - 0x1000000
 		end
 
-		if usesAUX then 
+		if usesAux then 
 			local aux = readWord()
 			inst.aux = aux
 
 			table.insert(codeList, {value = aux})
 		end
 
-		return usesAUX
+		return usesAux
 	end
 
-	local function checkKMode(inst, k)
-		local kMode = inst.kMode
+	local function checkkmode(inst, k)
+		local kmode = inst.kmode
 
-		if kMode == 1 then --// AUX
+		if kmode == 1 then --// AUX
 			inst.K = k[inst.aux +  1]
-		elseif kMode == 2 then --// C
+		elseif kmode == 2 then --// C
 			inst.K = k[inst.C + 1]
-		elseif kMode == 3 then--// D
+		elseif kmode == 3 then--// D
 			inst.K = k[inst.D + 1]
-		elseif kMode == 4 then --// AUX import
+		elseif kmode == 4 then --// AUX import
 			local extend = inst.aux
 
 			local count = bit32.rshift(extend, 30)
@@ -257,9 +257,9 @@ local function luau_deserialize(bytecode)
 				inst.K1 = k[id1 + 1]
 				inst.K2 = k[id2 + 1]
 			end
-		elseif kMode == 5 then --// AUX boolean low 1 bit
+		elseif kmode == 5 then --// AUX boolean low 1 bit
 			inst.K = bit32.extract(inst.aux, 0, 1) == 1
-		elseif kMode == 6 then --// AUX number low 24 bits
+		elseif kmode == 6 then --// AUX number low 24 bits
 			inst.K = k[bit32.extract(inst.aux, 0, 24) + 1]
 		end
 	end
@@ -274,7 +274,7 @@ local function luau_deserialize(bytecode)
 			readByte() --// flags 
 		end
 
-		local sizecode = readVarint()
+		local sizecode = readVarInt()
 		local codelist = table_create(sizecode)
 
 		local skipnext = false 
@@ -287,7 +287,7 @@ local function luau_deserialize(bytecode)
 			skipnext = readInstruction(codelist)
 		end
 
-		local sizek = readVarint()
+		local sizek = readVarInt()
 		local klist = table_create(sizek)
 
 		for i = 1, sizek do
@@ -303,18 +303,18 @@ local function luau_deserialize(bytecode)
 				position = position + 8
 				k = d
 			elseif kt == 3 then --// String
-				k = stringList[readVarint()]
+				k = stringList[readVarInt()]
 			elseif kt == 4 then --// Import
 				k = readWord()
 			elseif kt == 5 then --// Table
-				local dataLength = readVarint()
+				local dataLength = readVarInt()
 				local data = table_create(dataLength)
 				for i = 1, dataLength do
-					data[i] = readVarint()
+					data[i] = readVarInt()
 				end
 				k = data
 			elseif kt == 6 then --// Closure
-				k = readVarint()
+				k = readVarInt()
 			elseif kt == 7 then --// Vector
 				error("Fiu does not currently support vector constants!",0)
 			end
@@ -322,20 +322,20 @@ local function luau_deserialize(bytecode)
 			klist[i] = k
 		end
 		
-		-- // 2nd pass to add constant references in the instruction
+		-- // 2nd pass to replace constant references in the instruction
 		for i = 1, sizecode do
-			checkKMode(codelist[i], klist)
+			checkkmode(codelist[i], klist)
 		end
 
-		local sizep = readVarint()
+		local sizep = readVarInt()
 		local protolist = table_create(sizep)
 
 		for i = 1, sizep do
-			protolist[i] = readVarint()
+			protolist[i] = readVarInt()
 		end
 
-		local linedefined = readVarint()
-		local debugname = stringList[readVarint()]
+		local linedefined = readVarInt()
+		local debugname = stringList[readVarInt()]
 
 		-- // lineinfo
 		if readByte() ~= 0 then
@@ -351,11 +351,11 @@ local function luau_deserialize(bytecode)
 
 		-- // debuginfo
 		if readByte() ~= 0 then
-			local sizel = readVarint()
+			local sizel = readVarInt()
 			for i = 1, sizel do
-				readVarint()
-				readVarint()
-				readVarint()
+				readVarInt()
+				readVarInt()
+				readVarInt()
 				readByte()
 			end
 		end
@@ -381,24 +381,24 @@ local function luau_deserialize(bytecode)
 		}
 	end
 
-	local protoCount = readVarint()
-	local prototypeList = table_create(protoCount)
+	local protoCount = readVarInt()
+	local protoList = table_create(protoCount)
 
 	for i = 1, protoCount do
-		prototypeList[i] = readProto(i - 1)
+		protoList[i] = readProto(i - 1)
 	end
 
-	local mainp = readVarint()
+	local mainProto = protoList[readVarInt() + 1]
 
 	assert(position == #bytecode, "Deserializer position mismatch")
 
 	return {
-		slist = stringList;
-		plist = prototypeList;
+		stringList = stringList;
+		protoList = protoList;
 
-		mainp = mainp;
+		mainProto = mainProto;
 
-		typesversion = typesversion;
+		typesVersion = typesVersion;
 	}
 end
 
@@ -407,8 +407,9 @@ local function luau_load(module, env)
 		module = luau_deserialize(module)
 	end
 
-	local protolist = module.plist
-	local mainProto = protolist[module.mainp + 1]
+	local protolist = module.protoList
+	local mainProto = module.mainProto
+
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
@@ -416,7 +417,7 @@ local function luau_load(module, env)
 
 			while true do
 				local inst = code[pc]
-				local op = inst.code
+				local op = inst.opcode
 				pc += 1
 				debugging.pc = pc
 				debugging.name = inst.opname
@@ -874,8 +875,8 @@ local function luau_load(module, env)
 					local it = stack[inst.A]
 
 					if type(it) ~= "function" then 
-						local loopinstruction = code[pc + inst.D]
-						if generalized_iterators[loopinstruction] == nil then 
+						local loopInstruction = code[pc + inst.D]
+						if generalized_iterators[loopInstruction] == nil then 
 							--// Thanks @bmcq-0 and @memcorrupt for the spoonfeed
 							local function iterator()
 								for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in it do 
@@ -885,7 +886,7 @@ local function luau_load(module, env)
 								coroutine_yield(LUA_GENERALIZED_TERMINATOR)
 							end
 
-							generalized_iterators[loopinstruction] = coroutine_create(iterator)
+							generalized_iterators[loopInstruction] = coroutine_create(iterator)
 						end
 					end
 
@@ -968,6 +969,7 @@ local function luau_load(module, env)
 		end
 		return wrapped
 	end
+	
 	return luau_wrapclosure(module, mainProto)
 end
 

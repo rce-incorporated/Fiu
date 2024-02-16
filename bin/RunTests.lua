@@ -129,7 +129,9 @@ end
 
 if TEST_SPECIFIC then 
 	local specificConformanceTests = {}
-	local specificStagingTests = {}
+	local specificStagingTests = {
+		"FunctionIssue"
+	}
 
 	for i,v in specificTests do 
 		if v[1] then 

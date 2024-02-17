@@ -497,6 +497,7 @@ local function luau_load(module, env)
 					local newPrototype = protolist[inst.D + 1]
 
 					local upvalues = {}
+					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 
 					for i = 1, newPrototype.nups do
 						local pseudo = code[pc]
@@ -531,7 +532,7 @@ local function luau_load(module, env)
 						end
 					end
 
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+					
 				elseif op == 20 then --[[ NAMECALL ]]
 					pc += 1 --// adjust for aux 
 
@@ -829,6 +830,7 @@ local function luau_load(module, env)
 					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
 					local upvalues = {}
+					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 
 					for i = 1, newPrototype.nups do
 						local pseudo = code[pc]
@@ -848,9 +850,7 @@ local function luau_load(module, env)
 						elseif type == 2 then --// upvalue
 							upvalues[i] = upvals[pseudo.B]
 						end
-					end
-
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+					end					
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					--[[ Handled by wrapper ]]
 				elseif op == 66 then --[[ LOADKX ]]

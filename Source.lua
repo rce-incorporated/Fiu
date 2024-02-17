@@ -277,6 +277,7 @@ local function luau_deserialize(bytecode)
 
 		if luauVersion >= 4 then
 			readByte() --// flags 
+			readVarInt()
 		end
 
 		local sizecode = readVarInt()

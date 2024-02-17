@@ -1,7 +1,7 @@
 local TEST_ALL = false;
 local TEST_CONFORMANCE = false;
-local TEST_STAGING = true;
-local TEST_SPECIFIC = false;
+local TEST_STAGING = false;
+local TEST_SPECIFIC = true;
 
 local TEST_IF_OK = false;
 

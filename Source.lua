@@ -18,6 +18,13 @@ local buffer_readu32 = buffer.readu32
 local buffer_readstring = buffer.readstring
 local buffer_readf64 = buffer.readf64
 
+local bit32_bnot = bit32.bnot
+local bit32_bor = bit32.bor
+local bit32_band = bit32.band
+local bit32_rshift = bit32.rshift
+local bit32_lshift = bit32.lshift
+local bit32_extract = bit32.extract
+
 -- // opList contains information about the instruction, each instruction is defined in this format:
 -- // {OP_NAME, OP_MODE, K_MODE, HAS_AUX}
 -- // OP_MODE specifies what type of registers the instruction uses if any
@@ -146,7 +153,7 @@ local function luau_deserialize(bytecode)
 
 		for i = 0, 4 do
 			local value = readByte()
-			result = bit32.bor(result, bit32.lshift(bit32.band(value, 0x7F), i * 7))
+			result = bit32_bor(result, bit32_lshift(bit32_band(value, 0x7F), i * 7))
 			if not bit32.btest(value, 0x80) then
 				break
 			end
@@ -187,7 +194,7 @@ local function luau_deserialize(bytecode)
 
 	local function readInstruction(codeList)
 		local value = readWord()
-		local opcode = bit32.band(value, 0xFF)
+		local opcode = bit32_band(value, 0xFF)
 
 		local opinfo = opList[opcode + 1]
 		local opname = opinfo[1]
@@ -206,20 +213,20 @@ local function luau_deserialize(bytecode)
 		table.insert(codeList, inst)
 
 		if opmode == 1 then --[[ A ]]
-			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
+			inst.A = bit32_band(bit32_rshift(value, 8), 0xFF)
 		elseif opmode == 2 then --[[ AB ]]
-			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
-			inst.B = bit32.band(bit32.rshift(value, 16), 0xFF)
+			inst.A = bit32_band(bit32_rshift(value, 8), 0xFF)
+			inst.B = bit32_band(bit32_rshift(value, 16), 0xFF)
 		elseif opmode == 3 then --[[ ABC ]]
-			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
-			inst.B = bit32.band(bit32.rshift(value, 16), 0xFF)
-			inst.C = bit32.band(bit32.rshift(value, 24), 0xFF)
+			inst.A = bit32_band(bit32_rshift(value, 8), 0xFF)
+			inst.B = bit32_band(bit32_rshift(value, 16), 0xFF)
+			inst.C = bit32_band(bit32_rshift(value, 24), 0xFF)
 		elseif opmode == 4 then --[[ AD ]]
-			inst.A = bit32.band(bit32.rshift(value, 8), 0xFF)
-			local temp = bit32.band(bit32.rshift(value, 16), 0xFFFF)
+			inst.A = bit32_band(bit32_rshift(value, 8), 0xFF)
+			local temp = bit32_band(bit32_rshift(value, 16), 0xFFFF)
 			inst.D = if temp < 0x8000 then temp else temp - 0x10000
 		elseif opmode == 5 then --[[ AE ]]
-			local temp = bit32.band(bit32.rshift(value, 8), 0xFFFFFF)
+			local temp = bit32_band(bit32_rshift(value, 8), 0xFFFFFF)
 			inst.E = if temp < 0x800000 then temp else temp - 0x1000000
 		end
 
@@ -244,28 +251,28 @@ local function luau_deserialize(bytecode)
 			inst.K = k[inst.D + 1]
 		elseif kmode == 4 then --// AUX import
 			local extend = inst.aux
-			local count = bit32.rshift(extend, 30)
-			local id0 = bit32.band(bit32.rshift(extend, 20), 0x3FF)
+			local count = bit32_rshift(extend, 30)
+			local id0 = bit32_band(bit32_rshift(extend, 20), 0x3FF)
 
 			inst.K0 = k[id0 + 1]
 			inst.KC = count
 			if count == 2 then
-				local id1 = bit32.band(bit32.rshift(extend, 10), 0x3FF)
+				local id1 = bit32_band(bit32_rshift(extend, 10), 0x3FF)
 
 				inst.K1 = k[id1 + 1]
 			elseif count == 3 then
-				local id1 = bit32.band(bit32.rshift(extend, 10), 0x3FF)
-				local id2 = bit32.band(bit32.rshift(extend, 0), 0x3FF)
+				local id1 = bit32_band(bit32_rshift(extend, 10), 0x3FF)
+				local id2 = bit32_band(bit32_rshift(extend, 0), 0x3FF)
 
 				inst.K1 = k[id1 + 1]
 				inst.K2 = k[id2 + 1]
 			end
 		elseif kmode == 5 then --// AUX boolean low 1 bit
-			inst.K = bit32.extract(inst.aux, 0, 1) == 1
-			inst.KN = bit32.extract(inst.aux, 31, 1) == 1
+			inst.K = bit32_extract(inst.aux, 0, 1) == 1
+			inst.KN = bit32_extract(inst.aux, 31, 1) == 1
 		elseif kmode == 6 then --// AUX number low 24 bits
-			inst.K = k[bit32.extract(inst.aux, 0, 24) + 1]
-			inst.KN = bit32.extract(inst.aux, 31, 1) == 1
+			inst.K = k[bit32_extract(inst.aux, 0, 24) + 1]
+			inst.KN = bit32_extract(inst.aux, 31, 1) == 1
 		end
 	end
 
@@ -349,7 +356,7 @@ local function luau_deserialize(bytecode)
 			for i = 1, sizecode do
 				readByte()
 			end
-			local intervals = bit32.rshift(sizecode - 1, lineGap) + 1
+			local intervals = bit32_rshift(sizecode - 1, lineGap) + 1
 			for i = 1, intervals do
 				readWord()
 			end
@@ -777,15 +784,16 @@ local function luau_load(module, env)
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
 					local aux = inst.aux
+ 					local res = bit32_band(aux, 0xf);
 
 					top = A + 6
 
 					local it = stack[A]
 
 					if type(it) == "function" then 
-						local vals = { stack[A](stack[A + 1], stack[A + 2]) }
+						local vals = { it(stack[A + 1], stack[A + 2]) }
 
-						table_move(vals, 1, aux, A + 3, stack)
+						table_move(vals, 1, res, A + 3, stack)
 
 						if stack[A + 3] ~= nil then
 							stack[A + 2] = stack[A + 3]
@@ -797,9 +805,10 @@ local function luau_load(module, env)
 						local _, vals = coroutine_resume(generalized_iterators[inst])
 
 						if vals == LUA_GENERALIZED_TERMINATOR then 
+							generalized_iterators[inst] = nil
 							pc += 1
 						else 
-							table_move(vals, 1, aux, A + 3, stack)
+							table_move(vals, 1, res, A + 3, stack)
 
 							stack[A + 2] = stack[A + 3]
 							pc += inst.D

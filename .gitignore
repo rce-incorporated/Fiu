@@ -1,2 +1,5 @@
 *.luac
 *.exe
+
+# Ignore .vscode folder
+.vscode

@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Foreman
+        uses: Roblox/setup-foreman@v2.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Tests
+        run: lune run bin/RunTests.lua debug=0

@@ -1,0 +1,2 @@
+[tools]
+lune = { github = "lune-org/lune", version = "=0.8.0" }

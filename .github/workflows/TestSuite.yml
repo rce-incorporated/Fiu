@@ -19,4 +19,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Tests
-        run: lune run tests/TestRunner.luau debug=0
+        run: lune run tests/TestRunner.lua debug=0

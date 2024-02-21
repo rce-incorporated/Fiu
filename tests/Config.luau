@@ -7,6 +7,7 @@ return {
 	TEST_DIR = TEST_DIR,
 	TESTS = {
 		Conformance = `{TEST_DIR}/Conformance`,
+		Staging = `{TEST_DIR}/Staging`,
 	},
 	DEBUGGING = DEBUG_OPTIONS.ALL,
 	DEBUGGING_LEVEL = DEBUG_LEVEL.WARN,

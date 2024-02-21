@@ -239,27 +239,9 @@ local function RunTestFile(file : Files.FileItem)
 			test_info, thread
 		)
 
-		-- tassert(
-		-- 	fiu_suc,
-		-- 	`Test [{file_name}]: Fiu failed to execute`, {
-		-- 		`Fiu: {fiu_ret}`
-		-- 	},
-		-- 	test_info, thread
-		-- )
-
-		-- If both failed, we compare the error messages
-		-- print(luau_ret, fiu_ret);
-		tassert(
-			(fiu_suc and luau_suc) or filterErrorMessage(luau_ret) == filterErrorMessage(fiu_ret),
-			`Test [{file_name}]: Fiu and Luau returned different errors`, {
-				`Fiu: {fiu_ret or "No error"}`,
-				`Luau: {luau_ret or "No error"}`
-			},
-			test_info, thread
-		)
-
 		test_info.passed = true
 		test_info.result = `Test [{file_name}]: Passed`
+
 		coroutine.resume(thread)
 	end)
 

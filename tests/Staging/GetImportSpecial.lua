@@ -1,3 +1,5 @@
+getfenv().a = { b = { c = "HELLO" } }
+
 print(a.b)
 print(a.b.c)
 

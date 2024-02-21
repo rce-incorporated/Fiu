@@ -832,7 +832,7 @@ local function luau_load(module, env)
 
 					if b == LUA_MULTRET then
 						b = varargs.len
-						top = A + b - 1
+						top = A + b
 					end
 
 					table_move(varargs.list, 1, b, A, stack)

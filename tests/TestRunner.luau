@@ -7,28 +7,12 @@ local process = require("@lune/process")
 local Files = require("Utils/Files")
 local Enviroment = require("Utils/Enviroment")
 
--- Fiu
-local fiu = require("../Source")
-
 local CONFIGURATION = require("Config")
 
 local STATUS_SYMBOLS = {
 	`{stdio.color("red")}X{stdio.color("reset")}`,
 	`{stdio.color("green")}✔{stdio.color("reset")}`
 }
-
-local PROCESS_OPTIONS = {} do
-	for _, arg in process.args do
-		local name, value = arg:match("^(%w+)=(.+)$")
-		if name then
-			PROCESS_OPTIONS[name] = value
-		end
-	end
-end
-
-CONFIGURATION.DEBUGGING = PROCESS_OPTIONS.debug and tonumber(PROCESS_OPTIONS.debug) or CONFIGURATION.DEBUGGING
-CONFIGURATION.DEBUGGING_LEVEL = PROCESS_OPTIONS.debuglevel and tonumber(PROCESS_OPTIONS.debuglevel) or CONFIGURATION.DEBUGGING_LEVEL
-local RELATIVE_SINGLE_RUN = PROCESS_OPTIONS.test;
 
 local STAGES = {
 	[0] = "Compiling",
@@ -50,6 +34,31 @@ local bytecode_compilation_options = {
 	optimizationLevel = 1,
 	debugLevel = 1,
 }
+
+-- Fiu
+local fiu_ok, fiu_load = pcall(luau.load, fs.readFile("Source.lua"), { debugName = "Fiu" })
+assert(fiu_ok, `[{STATUS_SYMBOLS[1]}] Failed to Compile 'Fiu': {fiu_load}`)
+
+print(`[{STATUS_SYMBOLS[2]}] Fiu: Compiled`)
+
+local fiu : typeof(require("../Source"))
+fiu_ok, fiu = pcall(fiu_load)
+assert(fiu_ok, `[{STATUS_SYMBOLS[1]}] Failed to Load 'Fiu': {fiu}`)
+
+print(`[{STATUS_SYMBOLS[2]}] Fiu: Loaded`)
+
+local PROCESS_OPTIONS = {} do
+	for _, arg in process.args do
+		local name, value = arg:match("^(%w+)=(.+)$")
+		if name then
+			PROCESS_OPTIONS[name] = value
+		end
+	end
+end
+
+CONFIGURATION.DEBUGGING = PROCESS_OPTIONS.debug and tonumber(PROCESS_OPTIONS.debug) or CONFIGURATION.DEBUGGING
+CONFIGURATION.DEBUGGING_LEVEL = PROCESS_OPTIONS.debuglevel and tonumber(PROCESS_OPTIONS.debuglevel) or CONFIGURATION.DEBUGGING_LEVEL
+local RELATIVE_SINGLE_RUN = PROCESS_OPTIONS.test;
 
 for i, v in CONFIGURATION.TESTS do
 	assert(fs.isDir(v), `{i}: [{v}] directory not found`)
@@ -110,11 +119,6 @@ luau_env = Enviroment.new(tableCopyMerge(gen_temp_env, {
 		return setfenv(luau.load(bytecode, { debugName = "loadstring" }), env)
 	end
 }), RUNTIME_ENV)
-
-local function filterErrorMessage(msg : string)
-	local str, _ = msg:gsub(".+:%d+:(.+)", "%1");
-	return str
-end
 
 local function displayMessage(msg : string, stack : {string}, status : number)
 	local stack_size = #stack;

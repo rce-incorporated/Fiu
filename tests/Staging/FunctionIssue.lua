@@ -5,3 +5,5 @@ local function Stack()
 end
 
 Stack()
+
+OK()

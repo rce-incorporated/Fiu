@@ -54,4 +54,4 @@ assert(success, "Testsetting `false` value failed!")
 success = (nilVal or "a") == "a"
 assert(success, "Testsetting `nil` value failed!")
 
-print("Tests passed.")
+OK()

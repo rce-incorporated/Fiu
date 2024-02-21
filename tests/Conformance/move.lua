@@ -76,4 +76,4 @@ checkerror("wrap around", table.move, {}, minI, -2, 2)
 
 checkerror("readonly", table.move, table.freeze({}), 1, 1, 1)
 
-print"OK"
+OK()

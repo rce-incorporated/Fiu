@@ -11,3 +11,5 @@ end
 for i,v in {1,2,3} do 
 	print(i,v)
 end 
+
+OK()

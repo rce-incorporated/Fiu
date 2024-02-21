@@ -24,3 +24,5 @@ local c = a % b
 print(c)
 local c = a ^ b
 print(c)
+
+OK()

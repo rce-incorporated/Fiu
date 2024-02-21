@@ -315,4 +315,4 @@ assert(string.match("abc\0\0\0", "%\0%\0?") == "\0\0")
 assert(string.find("abc\0\0","\0.") == 4)
 assert(string.find("abcx\0\0abc\0abc","x\0\0abc\0a.") == 4)
 
-print('OK')
+OK()

@@ -4,3 +4,5 @@ local function foo(...)
 end
 
 foo(5,3,4,2)
+
+OK()

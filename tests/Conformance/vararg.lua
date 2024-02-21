@@ -168,5 +168,4 @@ f = loadstring[[
 assert(f("a", "b", nil, {}, assert))
 assert(f())
 
-return('OK')
-
+OK()

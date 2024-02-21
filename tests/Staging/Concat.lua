@@ -6,3 +6,5 @@ a = a .. "Wo"
 a = a .. "rld"
 
 print(a)
+
+OK()

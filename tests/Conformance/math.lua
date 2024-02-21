@@ -339,4 +339,4 @@ assert(select('#', math.floor(1.4)) == 1)
 assert(select('#', math.ceil(1.6)) == 1)
 assert(select('#', math.sqrt(9)) == 1)
 
-print('OK')
+OK()

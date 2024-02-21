@@ -213,4 +213,4 @@ end
 
 testgetfenv() -- DONT MOVE THIS LINE
 
-print"OK"
+OK()

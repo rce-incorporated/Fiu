@@ -76,4 +76,4 @@ do
 	end
 end
 
-print "OK"
+OK()

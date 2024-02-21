@@ -956,4 +956,4 @@ end)() == "userdata,userdata")
 
 testgetfenv() -- DONT MOVE THIS LINE
 
-print('OK')
+OK()

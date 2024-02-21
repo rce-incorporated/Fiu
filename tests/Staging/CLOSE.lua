@@ -6,3 +6,5 @@ for i = 1, 10 do
 end
 functions[2]()
 functions[9]()
+
+OK()

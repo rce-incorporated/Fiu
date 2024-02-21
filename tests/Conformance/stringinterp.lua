@@ -61,4 +61,4 @@ assertEq(shadowsString(1), "Value is 1")
 assertEq(`\u{0041}\t`, "A\t")
 ]]
 
-return "OK"
+OK()

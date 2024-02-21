@@ -326,4 +326,4 @@ do    -- testing out of range values
   checkerror("missing size", unpack, "c-2", "")
 end
 
-print "OK"
+OK()

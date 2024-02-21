@@ -239,4 +239,4 @@ repeat
   i = i+1
 until i==c
 
-print 'OK'
+OK()

@@ -9,3 +9,5 @@ local c = {
 }
 
 print(a,c,#a,#c)
+
+OK()

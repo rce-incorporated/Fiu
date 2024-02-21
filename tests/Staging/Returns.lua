@@ -18,3 +18,5 @@ print(foo())
 print(fooparams())
 print(foomult())
 print(foomultparams())
+
+OK()

@@ -108,4 +108,4 @@ do
          b[3] == 1)
 end
 
-print('OK')
+OK()

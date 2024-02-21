@@ -226,4 +226,4 @@ assert((function () return nil end)(4) == nil)
 assert((function () local a; return a end)(4) == nil)
 assert((function (a) return a end)() == nil)
 
-print('OK')
+OK()

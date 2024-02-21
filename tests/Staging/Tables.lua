@@ -6,3 +6,5 @@ local k = t["hash"]
 t[t] = {}
 local n = t[t]
 print(t,v,k,n)
+
+OK()

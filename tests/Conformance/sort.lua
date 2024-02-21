@@ -75,4 +75,4 @@ table.sort(a)
 check(a, tt.__lt)
 check(a)
 
-print"OK"
+OK()

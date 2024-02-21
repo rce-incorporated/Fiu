@@ -199,6 +199,13 @@ local function RunTestFile(file : Files.FileItem)
 	TEMP_FIU_ENV.warn = info_create(VM_NAMES.Fiu, 2, info_warn)
 	TEMP_LUAU_ENV.warn = info_create(VM_NAMES.Luau, 2, info_warn)
 
+	TEMP_FIU_ENV.OK = function()
+		test_info.passed = true
+	end
+	TEMP_LUAU_ENV.OK = function()
+		test_info.passed = true
+	end
+
 	task.spawn(function()
 		local source = fs.readFile(file.path)
 		local bytecode = luau.compile(source, bytecode_compilation_options)
@@ -243,8 +250,11 @@ local function RunTestFile(file : Files.FileItem)
 			test_info, thread
 		)
 
-		test_info.passed = true
-		test_info.result = `Test [{file_name}]: Passed`
+		if test_info.passed then
+			test_info.result = `Test [{file_name}]: Passed`
+		else
+			test_info.result = `Test [{file_name}]: No valid confirmation (not OK)`
+		end
 
 		coroutine.resume(thread)
 	end)

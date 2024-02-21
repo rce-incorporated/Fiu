@@ -77,4 +77,4 @@ assert((if if True() then false else true then 10 else 20) == 20)
 CheckForConditionalEvaluation(true)
 CheckForConditionalEvaluation(false)
 
-print('OK')
+OK()

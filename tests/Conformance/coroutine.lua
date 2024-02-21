@@ -346,4 +346,4 @@ do
   assert(st and msg == nil)
 end
 
-print 'OK'
+OK()

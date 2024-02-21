@@ -86,4 +86,4 @@ assert(os.difftime(t1,t2) == 60*2-19)
 
 assert(os.time({ year = 1970, day = 1, month = 1, hour = 0}) == 0)
 
-print 'OK'
+OK()

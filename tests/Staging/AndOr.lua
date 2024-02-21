@@ -3,3 +3,5 @@ local b = math.floor(15)
 local c = math.floor(25)
 print(a and b)
 print(a or c)
+
+OK()

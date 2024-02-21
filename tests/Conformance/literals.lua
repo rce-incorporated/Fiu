@@ -177,4 +177,4 @@ else
 end
 ]]--
 
-print('OK')
+OK()

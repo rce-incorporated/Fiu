@@ -12,3 +12,5 @@ local c = b % 1
 print(c)
 local c = b ^ 1
 print(c)
+
+OK()

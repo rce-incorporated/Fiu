@@ -30,3 +30,5 @@ if a <= math.floor(1) then
 	a += 1 
 	print("LTE", a) 
 end
+
+OK()

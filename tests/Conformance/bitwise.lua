@@ -165,4 +165,4 @@ assert(bit32.countlz("42") == 26)
 assert(bit32.countrz("42") == 1)
 assert(bit32.extract("42", 1, 3) == 5)
 
-print('OK')
+OK()

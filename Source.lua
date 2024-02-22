@@ -714,7 +714,7 @@ local function luau_load(module, env)
 					local c = inst.C - 1
 
 					if c == LUA_MULTRET then
-						c = top - B
+						c = top - B + 1
 					end
 
 					table_move(stack, B, B + c - 1, inst.aux, stack[A])

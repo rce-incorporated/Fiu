@@ -344,7 +344,7 @@ local function luau_deserialize(bytecode)
 		local protolist = table_create(sizep)
 
 		for i = 1, sizep do
-			protolist[i] = readVarInt()
+			protolist[i] = readVarInt() + 1
 		end
 
 		local linedefined = readVarInt()
@@ -502,7 +502,7 @@ local function luau_load(module, env)
 				elseif op == 18 then --[[ SETTABLEN ]]
 					stack[inst.B][inst.C + 1] = stack[inst.A]
 				elseif op == 19 then --[[ NEWCLOSURE ]]
-					local newPrototype = protolist[inst.D + 1]
+					local newPrototype = protolist[protos[inst.D + 1]]
 
 					local upvalues = {}
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)

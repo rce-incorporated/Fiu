@@ -76,7 +76,7 @@ assert(string.byte("hi", 9, 10) == nil)
 assert(string.byte("hi", 2, 1) == nil)
 assert(string.char() == "")
 assert(string.char(0, 255, 0) == "\0\255\0")
-assert(string.char(0, string.byte("�"), 0) == "\0�\0")
+assert(string.char(0, 239, 191, 189, 0) == "\0�\0")
 assert(string.char(string.byte("�l\0�u", 1, -1)) == "�l\0�u")
 assert(string.char(string.byte("�l\0�u", 1, 0)) == "")
 assert(string.char(string.byte("�l\0�u", -10, 100)) == "�l\0�u")
@@ -113,7 +113,7 @@ x = '"�lo"\n\\'
 assert(string.format('%q%s', x, x) == '"\\"�lo\\"\\\n\\\\""�lo"\n\\')
 assert(string.format('%q', "\0") == [["\000"]])
 assert(string.format('%q', "\r") == [["\r"]])
-assert(string.format("\0%c\0%c%x\0", string.byte("�"), string.byte("b"), 140) ==
+assert(string.format("\0%c%c%c\0%c%x\0", 239, 191, 189, string.byte("b"), 140) ==
               "\0�\0b8c\0")
 assert(string.format('') == "")
 assert(string.format("%c",34)..string.format("%c",48)..string.format("%c",90)..string.format("%c",100) ==

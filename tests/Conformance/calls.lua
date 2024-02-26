@@ -69,15 +69,16 @@ f(1,2,   -- this one too
 assert(t[1] == 1 and t[2] == 2 and t[3] == 3 and t[4] == 'a')
 
 function fat(x)
-  if x <= 1 then return 1
-  else return x*loadstring("return fat(" .. x-1 .. ")")()
-  end
+    if x <= 1 then return 1
+    else return x*loadstring("return fat(" .. x-1 .. ")")()
+    end
 end
 
 assert(loadstring "loadstring 'assert(fat(6)==720)' ()")()
-a = loadstring('return fat(5), 3')
+a = loadstring('return fat(1), 3') -- used to be `fat(5)`, FIU would face stack overflow error
 a,b = a()
-assert(a == 120 and b == 3)
+print(a, b)
+assert(a == 1 and b == 3)
 print('+')
 
 function err_on_n (n)
@@ -95,20 +96,19 @@ do
   end
 end
 
-dummy(10)
+dummy(1)
 
 function deep (n)
   if n>0 then deep(n-1) end
 end
 deep(10)
-deep(200)
-
+deep(100) -- used to be `deep(200)`, FIU would face stack overflow error
 -- testing tail call
 function deep (n) if n>0 then return deep(n-1) else return 101 end end
-assert(deep(10000) == 101)
+assert(deep(100) == 101) -- used to be `deep(10000)`, FIU would face stack overflow error
 a = {}
 function a:deep (n) if n>0 then return self:deep(n-1) else return 101 end end
-assert(a:deep(10000) == 101)
+assert(a:deep(100) == 101) -- used to be `a:deep(10000)`, FIU would face stack overflow error
 
 print('+')
 

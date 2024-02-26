@@ -5,7 +5,9 @@ local stdio = require("@lune/stdio")
 local process = require("@lune/process")
 
 local Files = require("Utils/Files")
+local Formatter = require("Utils/Formatter")
 local Enviroment = require("Utils/Enviroment")
+local Translation = require("Utils/Translation")
 
 local CONFIGURATION = require("Config")
 
@@ -36,14 +38,14 @@ local bytecode_compilation_options = {
 }
 
 -- Fiu
-local fiu_ok, fiu_load = pcall(luau.load, fs.readFile("Source.lua"), { debugName = "Fiu" })
-assert(fiu_ok, `[{STATUS_SYMBOLS[1]}] Failed to Compile 'Fiu': {fiu_load}`)
+local fiuOk, fiuLoad = pcall(luau.load, fs.readFile("Source.lua"), { debugName = "Fiu" })
+assert(fiuOk, `[{STATUS_SYMBOLS[1]}] Failed to Compile 'Fiu': {fiuLoad}`)
 
 print(`[{STATUS_SYMBOLS[2]}] Fiu: Compiled`)
 
 local fiu : typeof(require("../Source"))
-fiu_ok, fiu = pcall(fiu_load)
-assert(fiu_ok, `[{STATUS_SYMBOLS[1]}] Failed to Load 'Fiu': {fiu}`)
+fiuOk, fiu = pcall(fiuLoad)
+assert(fiuOk, `[{STATUS_SYMBOLS[1]}] Failed to Load 'Fiu': {fiu}`)
 
 print(`[{STATUS_SYMBOLS[2]}] Fiu: Loaded`)
 
@@ -56,72 +58,102 @@ local PROCESS_OPTIONS = {} do
 	end
 end
 
+print = Formatter.print
+warn = function(...)
+	print(`{Formatter.applyStyle(stdio.style("dim"), "[")}{Formatter.applyColor(stdio.color("yellow"), "WARN")}{Formatter.applyStyle(stdio.style("dim"), "]")}`)
+	print(...)
+end
+
 CONFIGURATION.DEBUGGING = PROCESS_OPTIONS.debug and tonumber(PROCESS_OPTIONS.debug) or CONFIGURATION.DEBUGGING
 CONFIGURATION.DEBUGGING_LEVEL = PROCESS_OPTIONS.debuglevel and tonumber(PROCESS_OPTIONS.debuglevel) or CONFIGURATION.DEBUGGING_LEVEL
-local RELATIVE_SINGLE_RUN = PROCESS_OPTIONS.test;
+local RELATIVE_SINGLE_RUN = PROCESS_OPTIONS.test
+local COLLECT_LOGS = if (PROCESS_OPTIONS.collectlogs ~= nil) then PROCESS_OPTIONS.collectlogs:lower() == "true" else true
 
 for i, v in CONFIGURATION.TESTS do
 	assert(fs.isDir(v), `{i}: [{v}] directory not found`)
 end
 
-local RUNTIME_ENV = getfenv();
+local RUNTIME_ENV = getfenv()
+
+setmetatable(RUNTIME_ENV, {
+	__newindex = function(_, k, v)
+		error(`Cannot modify the runtime environment, {debug.traceback()}`)
+	end
+})
 
 local function tableCopyMerge(target, source)
-	local copy = table.clone(target);
+	local copy = table.clone(target)
 	for i, v in source do
 		copy[i] = v
 	end
-	return copy;
+	return copy
+end
+
+local function mathFloorPrecision(num, precision)
+	return math.floor(num * precision) / precision
 end
 
 local function canDebug(executor : number)
 	return CONFIGURATION.DEBUGGING == 3 or CONFIGURATION.DEBUGGING == executor
 end
 
-local function tassert(cond, msg, stack, test_info, thread)
+local function canDebugByLevel(level : number)
+	return CONFIGURATION.DEBUGGING_LEVEL == level or CONFIGURATION.DEBUGGING_LEVEL == 3 or CONFIGURATION.DEBUGGING_LEVEL == 4
+end
+
+local function tassert(cond, msg, stack, testInfo, thread)
 	if not cond then
-		test_info.passed = false
-		test_info.result = msg
+		testInfo.passed = false
+		testInfo.result = msg
 		for i, v in stack do
-			table.insert(test_info.resstack, v)
+			table.insert(testInfo.resstack, v)
 		end
 		coroutine.resume(thread)
 		coroutine.yield()
 	end
 end
 
-local gen_temp_env = {
+local genTempEnv = {
 	task = task,
 	print = function() end,
 }
 
-local fiu_env
-local luau_env
+local fiuEnv
+local luauEnv
 
-fiu_env = Enviroment.new(tableCopyMerge(gen_temp_env, {
+local fiuMaskEnv
+
+fiuEnv = Enviroment.new(tableCopyMerge(genTempEnv, {
 	loadstring = function(str : string)
 		local ok, bytecode = pcall(luau.compile, str, bytecode_compilation_options)
 		if not ok then
 			error(tostring(bytecode))
 		end
-		local env = getfenv(2);
+		-- FIU Wraps the Luau execute function, setting the context function of a closure
+		-- when FIU Debugging is enabled: this(1) -> luau_execute(2) -> wrapped(3)
+		-- Otherwise: this(1) -> luau_execute(2) -> pcall(3) -> wrapped(4)
+		local env = getfenv(3)
+		if env == RUNTIME_ENV then
+			env = fiuMaskEnv;
+		end
 		return setfenv(fiu.luau_load(bytecode, env), env)
 	end
 }), RUNTIME_ENV)
 
-luau_env = Enviroment.new(tableCopyMerge(gen_temp_env, {
+luauEnv = Enviroment.new(tableCopyMerge(genTempEnv, {
 	loadstring = function(str : string)
 		local ok, bytecode = pcall(luau.compile, str, bytecode_compilation_options)
 		if not ok then
 			error(tostring(bytecode))
 		end
-		local env = getfenv(2);
+		-- this(1) -> @luau(2)
+		local env = getfenv(2)
 		return setfenv(luau.load(bytecode, { debugName = "loadstring" }), env)
 	end
 }), RUNTIME_ENV)
 
 local function displayMessage(msg : string, stack : {string}, status : number)
-	local stack_size = #stack;
+	local stack_size = #stack
 	return `  [{STATUS_SYMBOLS[status]}] {msg}{
 		if stack_size > 0
 		then if stack_size > 1
@@ -136,124 +168,230 @@ local function displayMessage(msg : string, stack : {string}, status : number)
 end
 
 local function RunTestFile(file : Files.FileItem)
-	local file_name = file.relativeName;
-	local test_info = {
+	local fileName = file.relativeName
+	local testInfo = {
 		stage = 0,
 		passed = false,
 		result = nil,
 		resstack = {},
 		file = file,
-	};
+	}
 	
 	local thread = coroutine.running()
 	local timeout
 	timeout = task.delay(7, function()
 		timeout = nil
-		test_info.passed = false
-		test_info.result = `Test [{file_name}]: Failed (Timed out) at stage {STAGES[test_info.stage]}`
+		testInfo.passed = false
+		testInfo.result = `Test [{fileName}]: Failed (Timed out) at stage {STAGES[testInfo.stage]}`
 		coroutine.resume(thread)
 	end)
 
-	local info_print = function(vm : number, ...)
+	local function infoPrint(vm : number, ...)
 		if not canDebug(vm) then
 			return
 		end
-		local args = {...}
-		for i, v in args do
-			args[i] = tostring(v)
+		if CONFIGURATION.DEBUGGING_LEVEL == 4 then
+			print(...)
 		end
-		table.insert(test_info.resstack, `+ [{stdio.color("blue")}PRINT{stdio.color("reset")}] {table.concat(args, "\t")}`)
-	end
-
-	local info_warn = function(vm : number, ...)
-		if not canDebug(vm) then
+		if not COLLECT_LOGS then
 			return
 		end
 		local args = {...}
-		for i, v in args do
+		for i = 1, #args do
+			local v = args[i]
+			if type(v) == "table" then
+				args[i] = Translation.toStringTable(v)
+				continue
+			end
 			args[i] = tostring(v)
 		end
-		table.insert(test_info.resstack, `+ [{stdio.color("yellow")}WARN{stdio.color("reset")}] {table.concat(args, "\t")}`)
+		table.insert(testInfo.resstack, `+ [{Formatter.applyColor(stdio.color("blue"), "PRINT")}] {table.concat(args, "\t")}`)
 	end
 
-	local context_screening = {}
-	local info_create = function(vm : number, debugid : number, info_writer : (vm : number, ...any) -> ()) : (...any) -> ()
+	local function infoWarn(vm : number, ...)
+		if not canDebug(vm) then
+			return
+		end
+		if CONFIGURATION.DEBUGGING_LEVEL == 4 then
+			warn(...)
+		end
+		if not COLLECT_LOGS then
+			return
+		end
+		local args = {...}
+		for i = 1, #args do
+			local v = args[i]
+			if type(v) == "table" then
+				args[i] = Translation.toStringTable(v)
+				continue
+			end
+			args[i] = tostring(v)
+		end
+		table.insert(testInfo.resstack, `+ [{stdio.color("yellow")}WARN{stdio.color("reset")}] {table.concat(args, "\t")}`)
+	end
+
+	local contextScreening = {}
+	local function infoCreate(vm : number, debugid : number, info_writer : (vm : number, ...any) -> ()) : (...any) -> ()
 		return function(...)
-			if not canDebug(vm) or (CONFIGURATION.DEBUGGING_LEVEL ~= debugid and CONFIGURATION.DEBUGGING_LEVEL ~= 3) then
+			if not canDebug(vm) or not canDebugByLevel(debugid) then
 				return
 			end
-			if (not context_screening[vm]) then
-				table.insert(test_info.resstack, `[{VM_NAMES[vm]}]`)
-				context_screening[vm] = true
+			if not contextScreening[vm] then
+				table.insert(testInfo.resstack, `[{VM_NAMES[vm]}]`)
+				contextScreening[vm] = true
 			end
 			info_writer(vm, ...)
 		end
 	end
 
-	local TEMP_FIU_ENV = fiu_env:construct();
-	local TEMP_LUAU_ENV = luau_env:construct();
+	local TEMP_FIU_ENV, VIRTUAL_FIU_ENV = fiuEnv:construct(true)
+	local TEMP_LUAU_ENV, VIRTUAL_LUAU_ENV = luauEnv:construct()
 
-	TEMP_FIU_ENV.print = info_create(VM_NAMES.Fiu, 1, info_print)
-	TEMP_LUAU_ENV.print = info_create(VM_NAMES.Luau, 1, info_print)
+	VIRTUAL_FIU_ENV.print = infoCreate(VM_NAMES.Fiu, 1, infoPrint)
+	VIRTUAL_LUAU_ENV.print = infoCreate(VM_NAMES.Luau, 1, infoPrint)
 	
-	TEMP_FIU_ENV.warn = info_create(VM_NAMES.Fiu, 2, info_warn)
-	TEMP_LUAU_ENV.warn = info_create(VM_NAMES.Luau, 2, info_warn)
+	VIRTUAL_FIU_ENV.warn = infoCreate(VM_NAMES.Fiu, 2, infoWarn)
+	VIRTUAL_LUAU_ENV.warn = infoCreate(VM_NAMES.Luau, 2, infoWarn)
 
-	TEMP_FIU_ENV.OK = function()
-		test_info.passed = true
+	VIRTUAL_FIU_ENV.OK = function()
+		testInfo.passed = true
 	end
-	TEMP_LUAU_ENV.OK = function()
-		test_info.passed = true
+	VIRTUAL_LUAU_ENV.OK = VIRTUAL_FIU_ENV.OK
+
+	local assignedEnv = {}
+	local function isolatedGetFenv(sandbox_env : any)
+		return function(target : any?)
+			if target == 0 then
+				-- `sandbox global` environment
+				return sandbox_env
+			end
+			if target == nil then
+				target = 1
+			end
+			local f
+			if type(target) == "number" and target > 0 then
+				target += 1
+				-- FIU Wraps the Luau execute function, setting the context function of a closure
+				-- would only affect `wrapped` and not luau_execute, we want to skip luau_execute and straight to wrapped
+				target += if (sandbox_env == TEMP_FIU_ENV) then target//2 else 0
+				f = debug.info(target, "f")
+			elseif type(target) == "function" then
+				f = target
+			end
+			local assigned = f and assignedEnv[f]
+			if assigned then
+				return assigned
+			end
+			local env = getfenv(target)
+			if RUNTIME_ENV == env then
+				return sandbox_env
+			end
+			return env
+		end
 	end
 
-	task.spawn(function()
+	VIRTUAL_FIU_ENV.getfenv = isolatedGetFenv(TEMP_FIU_ENV)
+	VIRTUAL_LUAU_ENV.getfenv = isolatedGetFenv(TEMP_LUAU_ENV)
+
+	local function isolatedSetFenv(sandbox_env : any)
+		return function(target : any, new_env : any)
+			assert(type(target) == "function" or type(target) == "number", "(function or number expected)")
+			assert(type(new_env) == "table", "(table expected)")
+
+			if target == 0 then
+				-- `sandbox global` environment
+				error(`Cannot change the luau sandbox environment`)
+			end
+			if type(target) == "number" then
+				target += 1
+				-- FIU Wraps the Luau execute function, setting the context function of a closure
+				-- would only affect `wrapped` and not luau_execute, we want to skip luau_execute and straight to wrapped
+				target += if (sandbox_env == TEMP_FIU_ENV) then (target - 1)//2 * 2 else 0
+			end
+			local env = sandbox_env.getfenv(target)
+			if RUNTIME_ENV == env then
+				error(`Cannot change a function environment of which is not a sandboxed environment`)
+			end
+
+			if sandbox_env == TEMP_FIU_ENV then
+				local f
+				if type(target) == "function" then
+					assignedEnv[target] = new_env
+					setfenv(target, new_env)
+					f = target
+				else
+					f = debug.info(target, "f")
+					assignedEnv[f] = new_env
+					setfenv(f, new_env)
+				end
+				return f or target
+			end
+			return setfenv(target, new_env)
+		end
+	end
+
+	VIRTUAL_FIU_ENV.setfenv = isolatedSetFenv(TEMP_FIU_ENV)
+	VIRTUAL_LUAU_ENV.setfenv = isolatedSetFenv(TEMP_LUAU_ENV)
+
+	fiuMaskEnv = TEMP_FIU_ENV
+
+	task.defer(function()
 		local source = fs.readFile(file.path)
-		local bytecode = luau.compile(source, bytecode_compilation_options)
+		local compileOk, bytecode = pcall(luau.compile, source, bytecode_compilation_options)
 		
-		test_info.stage = 1
-		local fiu_deserialize_suc, fiu_deserialize_ret = pcall(fiu.luau_load, bytecode, TEMP_FIU_ENV)
+		tassert(compileOk, `Test [{fileName}]: Failed to compile test.`, {}, testInfo, thread)
 
-		test_info.stage = 2
-		local luau_deserialize_suc, luau_deserialize_ret = pcall(luau.load, bytecode, { debugName = file.relativePath, environment = TEMP_LUAU_ENV })
+		testInfo.stage = 1
+		local fiuDeserializeOk, fiuDeserializeRet = pcall(fiu.luau_load, bytecode, TEMP_FIU_ENV)
 
-		tassert(
-			luau_deserialize_suc,
-			`Test [{file_name}]: Luau failed to deserialize`, {
-				`Luau: {luau_deserialize_ret}`
-			},
-			test_info, thread
-		)
+		testInfo.stage = 2
+		local luauDeserializeOk, luauDeserializeRet = pcall(luau.load, bytecode, { debugName = file.relativePath })
 
 		tassert(
-			fiu_deserialize_suc,
-			`Test [{file_name}]: Fiu failed to deserialize`, {
-				`Fiu: {fiu_deserialize_ret}`
+			luauDeserializeOk and fiuDeserializeOk,
+			`Test [{fileName}]: Failed to deserialize`, {
+				not luauDeserializeOk and `Luau: {luauDeserializeRet}` or nil,
+				not fiuDeserializeOk and `Fiu: {fiuDeserializeRet}` or nil
 			},
-			test_info, thread
+			testInfo, thread
 		)
 
-		test_info.stage = 3
-		setfenv(fiu_deserialize_ret, TEMP_FIU_ENV)
-		local fiu_suc, fiu_ret = pcall(fiu_deserialize_ret)
+		testInfo.stage = 3
+		setfenv(fiuDeserializeRet, TEMP_FIU_ENV)
+		if canDebug(1) and CONFIGURATION.DEBUGGING_LEVEL == 4 then
+			print("[FIU CONSOLE LOG]", testInfo.file.relativeName)
+		end
+		local fiuExecutionTimeStart = os.clock()
+		local fiuOk, fiuRet = pcall(fiuDeserializeRet)
+		local fiuExecutionTimeEnd = os.clock()
 
-		test_info.stage = 4
-		setfenv(luau_deserialize_ret, TEMP_LUAU_ENV)
-		local luau_suc, luau_ret = pcall(luau_deserialize_ret)
+		testInfo.stage = 4
+		setfenv(luauDeserializeRet, TEMP_LUAU_ENV)
+		if canDebug(2) and CONFIGURATION.DEBUGGING_LEVEL == 4 then
+			print("[LUAU CONSOLE LOG]", testInfo.file.relativeName)
+		end
+		local luauExecutionTimeStart = os.clock()
+		local luauOk, luauRet = pcall(luauDeserializeRet)
+		local luauExecutionTimeEnd = os.clock()
 
-		test_info.stage = 5
+		testInfo.stage = 5
 		tassert(
-			fiu_suc and luau_suc,
-			`Test [{file_name}]: Failed to execute`, {
-				not luau_suc and `Luau: {luau_ret}` or nil,
-				not fiu_suc and `Fiu: {fiu_ret}` or nil
+			fiuOk and luauOk,
+			`Test [{fileName}]: Failed to execute`, {
+				not luauOk and `Luau: {luauRet}` or nil,
+				not fiuOk and `Fiu: {fiuRet}` or nil
 			},
-			test_info, thread
+			testInfo, thread
 		)
 
-		if test_info.passed then
-			test_info.result = `Test [{file_name}]: Passed`
+		if testInfo.passed then
+			testInfo.result = `Test [{fileName}]: Passed (Fiu: {
+				mathFloorPrecision(fiuExecutionTimeEnd - fiuExecutionTimeStart, 1000)
+			}ms, Luau: {
+				mathFloorPrecision(luauExecutionTimeEnd - luauExecutionTimeStart, 1000)
+			}ms)`
 		else
-			test_info.result = `Test [{file_name}]: No valid confirmation (not OK)`
+			testInfo.result = `Test [{fileName}]: No valid confirmation (not OK)`
 		end
 
 		coroutine.resume(thread)
@@ -265,53 +403,54 @@ local function RunTestFile(file : Files.FileItem)
 		task.cancel(timeout)
 	end
 
-	table.freeze(test_info);
+	table.freeze(testInfo)
 
-	return test_info;
+	return testInfo
 end
 
-local tests_failed = {};
+local testsFailed = {}
+local testResults = {}
 
 for i, v in CONFIGURATION.TESTS do
 	local failed = false
 	local results = {}
-	local test_files = Files.getFiles(v, "^[%w%-+_]+%.luau?$", `{CONFIGURATION.TEST_DIR}`)
-	for i, v in test_files do
-		if (RELATIVE_SINGLE_RUN and v.relativeName ~= RELATIVE_SINGLE_RUN) then
+	local testFiles = Files.getFiles(v, "^[%w%-+_]+%.luau?$", `{CONFIGURATION.TEST_DIR}`)
+	for i, v in testFiles do
+		if RELATIVE_SINGLE_RUN and v.relativeName ~= RELATIVE_SINGLE_RUN then
 			continue
 		end
-		local test_info = RunTestFile(v)
+		local testInfo = RunTestFile(v)
 		
-		table.insert(results, test_info)
+		table.insert(results, testInfo)
 
-		if not test_info.passed then
+		if not testInfo.passed then
 			failed = true
-			table.insert(tests_failed, test_info)
+			table.insert(testsFailed, testInfo)
 		end
 	end
 
-	if not failed then
-		print(`[{STATUS_SYMBOLS[2]}] {i}: {stdio.color("green")}All tests passed{stdio.color("reset")}`)
-	else
-		print(`[{STATUS_SYMBOLS[1]}] {i}: {stdio.color("red")}Some tests failed{stdio.color("reset")}`)
-	end
+	if #results > 0 then
+		if not failed then
+			print(`[{STATUS_SYMBOLS[2]}] {i}: {stdio.color("green")}All tests passed{stdio.color("reset")}`)
+		else
+			print(`[{STATUS_SYMBOLS[1]}] {i}: {stdio.color("red")}Some tests failed{stdio.color("reset")}`)
+		end
 
-	for _, test_info in results do
-		print(displayMessage(test_info.result, test_info.resstack, test_info.passed and 2 or 1))
-	end
+		for _, testInfo in results do
+			print(displayMessage(testInfo.result, testInfo.resstack, testInfo.passed and 2 or 1))
+		end
 
-	print()
-	print()
-	
+		print('\n')
+	end
 end
 
-if #tests_failed > 0 then
-	print("Failed tests:");
-	for i, v in tests_failed do
+if #testsFailed > 0 then
+	print("Failed tests:")
+	for i, v in testsFailed do
 		print(displayMessage(v.file.relativePath, {}, 1))
 	end
-	process.exit(1);
+	process.exit(1)
 end
 
 print("All tests passed")
-process.exit(0);
+process.exit(0)

@@ -25,7 +25,6 @@ x = 1
 a = nil
 loadstring('local a = {}')()
 assert(type(a) ~= 'table')
-
 function f (a)
   local _1, _2, _3, _4, _5
   local _6, _7, _8, _9, _10
@@ -56,26 +55,28 @@ assert(type(f) == 'function')
 -- testing globals ;-)
 do
   local f = {}
-  local _G = getfenv()
+  -- Originally `local _G = getfenv()` but enviroment is all over the place in FIU,
+  -- and FIU doesnt manage env inside its own execution. Referencing is simplier
+  -- perhaps a more Luau Like enviroment management in FIU could reduce complications in `TestRunner`
+  local getfenv, assert = getfenv, assert;
   A=10;
-  for i=1,10 do 
-    f[i] = function (x) A=A+1; return A, _G.getfenv(x) end
+  for i=1,10 do
+    f[i] = function (x) A=A+1; return A, getfenv(x) end
   end
-  assert(f[1]() == 11)
-  for i=1,10 do 
+  assert(f[1]() == 11, "1")
+  for i=1,10 do
     assert(setfenv(f[i], {A=i}) == f[i])
   end
-  assert(f[3]() == 4 and A == 11)
+  assert(f[3]() == 4 and A == 11, `{A}`)
   local a,b = f[8](1)
-  assert(b.A == 9)
+  assert(b.A == 9, "4")
   a,b = f[8](2)
-  assert(b.A == 11)   -- `real' global
+  assert(b.A == 11, "5")   -- `real' global
   local g
   local function f () assert(setfenv(2, {a='10'}) == g) end
-  g = function () f(); _G.assert(_G.getfenv(1).a == '10') end
+  g = function () f(); assert(getfenv(1).a == '10') end
   g(); assert(getfenv(g).a == '10')
 end
-
 -- test for global table of loaded chunks
 local function foo (s)
   return loadstring(s)

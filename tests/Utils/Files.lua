@@ -1,6 +1,6 @@
-local fs = require("@lune/fs");
+local fs = require("@lune/fs")
 
-local Files = {};
+local Files = {}
 
 export type FileItem = {
 	path : string,
@@ -21,7 +21,7 @@ function Files.getFiles(path : string, filter : string, parentPath : string?): {
 			for _, subFile in subFiles do
 				table.insert(result, subFile)
 			end
-			continue;
+			continue
 		end
 		if file:match(filter) then
 			table.insert(result, {
@@ -32,7 +32,7 @@ function Files.getFiles(path : string, filter : string, parentPath : string?): {
 			})
 		end
 	end
-	return result;
+	return result
 end
 
-return Files;
+return Files

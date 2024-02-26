@@ -1,5 +1,5 @@
 local DEBUG_OPTIONS = { OFF = 0, Fiu = 1, LUAU = 2, ALL = 3 }
-local DEBUG_LEVEL = { PRINT = 1, WARN = 2, ALL = 3}
+local DEBUG_LEVEL = { PRINT = 1, WARN = 2, ALL = 3, IO_STREAM = 4}
 
 local TEST_DIR = "tests"
 

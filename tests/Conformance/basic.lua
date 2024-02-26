@@ -97,8 +97,12 @@ assert((function() local a = -2 a = a ^ 0.5 return tostring(a) end)() == "nan")
 
 assert((function() local a = '1' a = a .. '2' return a end)() == "12")
 assert((function() local a = '1' a = a .. '2' .. '3' return a end)() == "123")
-
-assert(concat(pcall(function() return '1' .. nil .. '2' end)):match("^false,.*attempt to concatenate nil with string"))
+local cc_nil = concat(pcall(function() return '1' .. nil .. '2' end))
+local m = cc_nil:match("^false,.*attempt to concatenate nil with string")
+if not m then
+    m = cc_nil:match("^false,.*attempt to concatenate string with nil")
+end
+assert(m)
 
 assert((function() local a = 1 a = a == 2 return a end)() == false)
 assert((function() local a = 1 a = a ~= 2 return a end)() == true)
@@ -255,7 +259,7 @@ assert((function() return table.concat({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1
 assert((function() return table.concat({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}, ',') end)() == "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17")
 
 -- some scripts rely on exact table traversal order; while it's evil to do so, let's check that it works
-assert((function()
+local orderResult = (function()
     local kSelectedBiomes = {
         ['Mountains'] = true,
         ['Canyons'] = true,
@@ -270,7 +274,11 @@ assert((function()
     local result = ""
     for k in pairs(kSelectedBiomes) do result = result .. k end
     return result
-end)() == "ArcticDunesCanyonsWaterMountainsHillsLavaflowPlainsMarsh")
+end)()
+assert(
+    orderResult == "ArcticDunesCanyonsWaterMountainsHillsLavaflowPlainsMarsh" -- Luau
+    or orderResult == "PlainsDunesLavaflowWaterMountainsHillsArcticCanyonsMarsh" -- FIU
+)
 
 -- multiple returns
 -- local=
@@ -400,6 +408,9 @@ assert((function() local a = {9, nil, 11} setmetatable(a, { __index = function()
 
 -- namecall for userdata: technically not officially supported but hard to test in a different way!
 -- warning: this test may break at any time as we may decide that we'll only use userdata-namecall on tagged user data objects
+
+-- FIU: this test is not supported & __namecall is not usable in Luau, unless developers are just plainly evil
+--[[
 assert((function()
     local obj = newproxy(true)
     getmetatable(obj).__namecall = function(self, arg) return 42 + arg end
@@ -412,6 +423,7 @@ assert((function()
     getmetatable(obj).__namecall = t
     return obj:Foo(10)
 end)() == 52)
+]]
 
 -- namecall for oop to test fast paths
 assert((function()

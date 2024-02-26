@@ -231,10 +231,9 @@ repeat
       while %s do WX1 = a; break end
       while %s do WX2 = a; break end
       repeat if (%s) then break end; assert(b)  until not(%s)
-      return K,X,NX,WX1,WX2
   ]], s1, s, s1, s, s1, s, s1, s, s)
-  local K,X,NX,WX1,WX2 = assert(loadstring(s))()
-  assert(X and not NX and not WX1 == K and not WX2 == K, `{X}, {NX}, {WX1}, {WX2}, {K} | {_s}`)
+  assert(loadstring(s))()
+  assert(X and not NX and not WX1 == K and not WX2 == K)
   if i%4000 == 0 then print('+') end
   i = i+1
 until i==c

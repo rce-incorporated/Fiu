@@ -377,7 +377,7 @@ local function RunTestFile(file : Files.FileItem)
 		testInfo.stage = 5
 		tassert(
 			fiuOk and luauOk,
-			`Test [{fileName}]: Failed to execute`, {
+			`Test [{fileName}]: Failed test`, {
 				not luauOk and `Luau: {luauRet}` or nil,
 				not fiuOk and `Fiu: {fiuRet}` or nil
 			},

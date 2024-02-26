@@ -11,7 +11,7 @@ function newClosure()
 	assert(a == 1, b == 2, c == 3)
 	return a + b + c
 end
-assert(newClosure() == 6)
+assert(newClosure() == 6, "newClosure() is not 6")
 
 -- test function given proto
 function newClosure2(a)
@@ -23,7 +23,7 @@ function newClosure2(a)
 end
 
 local closure, result = newClosure2(20)
-assert(closure == "NEWCLOSURE")
-assert(result[1] == 21 and result[2] == 22 and result[3] == 23)
+assert(closure == "NEWCLOSURE", "closure is not NEWCLOSURE")
+assert(result[1] == 21 and result[2] == 22 and result[3] == 23, "result is not {21, 22, 23}")
 
 OK()

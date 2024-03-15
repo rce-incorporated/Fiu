@@ -521,6 +521,7 @@ int main(int argc, char* argv[])
 		for (const TestResult& result : tests.results) {
 			printf("  %s\n", result.output.c_str());
 		}
+		printf("\n");
 	}
 
 	printf("\n");

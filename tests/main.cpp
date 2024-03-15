@@ -530,9 +530,8 @@ int main(int argc, char* argv[])
 		for (const TestResult& result : failedTests) {
 			printf("  %s\n", result.output.c_str());
 		}
-	} else {
-		printf("All tests passed\n");
+		return 1;
 	}
-
+	printf("All tests passed\n");
 	return 0;
 }

@@ -13,10 +13,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Foreman
-        uses: Roblox/setup-foreman@v2.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run Tests
-        run: lune run tests/TestRunner.lua debug=0
+      - name: Make tests
+        run: |
+          cmake ./tests
+          cmake --build . --target=fiu-tests
+      
+      - name: Run tests
+        run: |
+          ./fiu-tests

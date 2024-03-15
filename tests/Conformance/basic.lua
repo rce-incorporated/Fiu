@@ -546,11 +546,7 @@ assert((function() local a = {4, 5, nil, 6} return concat(a[1], a[3], a[4], a[10
 assert((function() local a = {4, 5, nil, 6} a[1] = 42 a[3] = 0 a[100] = 75 return concat(a[1], a[3], a[75], a[100]) end)() == "42,0,nil,75")
 
 -- load error
-do
-    local ok, err = pcall(function() return concat(loadstring('hello world')) end)
-    assert(ok == false, `expected error, got success`);
-    assert(err:match("Incomplete statement: expected assignment or a function call") ~= nil, `expected error message, got [{err}]`);
-end
+assert((function() return concat(loadstring('hello world')) end)() == "nil,[string \"hello world\"]:1: Incomplete statement: expected assignment or a function call")
 
 -- many arguments & locals
 function f(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,

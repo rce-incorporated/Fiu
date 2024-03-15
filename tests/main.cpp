@@ -69,6 +69,7 @@ static int finishrequire(lua_State* L)
 	return 1;
 }
 
+// Ref: https://github.com/luau-lang/luau/blob/a7683110d71a15bfc823688191476d4c822565cf/CLI/Repl.cpp#L97C1-L112C2
 static int lua_loadstring(lua_State* L)
 {
 	size_t l = 0;
@@ -110,6 +111,7 @@ static optional<string> COMPILE_TEST(string source, const char* name = "Compiled
 	return error;
 }
 
+// Ref: https://github.com/luau-lang/luau/blob/a7683110d71a15bfc823688191476d4c822565cf/CLI/Repl.cpp#L183C1-L245C33
 static int lua_require(lua_State* L)
 {
 	string name = luaL_checkstring(L, 1);
@@ -187,6 +189,8 @@ int lua_io_warn(lua_State* L)
 	fwrite("WARN", 1, 4, stdout);
 	fwrite(COLOR_RESET, 1, 6, stdout);
 	fwrite("] ", 1, 2, stdout);
+
+	// Ref: https://github.com/luau-lang/luau/blob/a7683110d71a15bfc823688191476d4c822565cf/VM/src/lbaselib.cpp#L21C1-L32C14
 	int n = lua_gettop(L); // number of arguments
 	for (int i = 1; i <= n; i++)
 	{
@@ -248,6 +252,7 @@ lua_State* newFiu(const char* chunkName = "Fiu")
 
 	// Load Fiu
 	{
+		// Ref: https://github.com/luau-lang/luau/blob/a7683110d71a15bfc823688191476d4c822565cf/CLI/Repl.cpp#L206C1-L240C29
 		lua_State* GL = lua_mainthread(L);
 		lua_State* ML = lua_newthread(GL);
 		lua_xmove(GL, L, 1);
@@ -262,17 +267,17 @@ lua_State* newFiu(const char* chunkName = "Fiu")
 			if (status == 0)
 			{
 				if (lua_gettop(ML) == 0)
-				lua_pushstring(ML, "module must return a value");
+				lua_pushstring(ML, "fiu must return a value");
 				else if (!lua_istable(ML, -1) && !lua_isfunction(ML, -1))
-				lua_pushstring(ML, "module must return a table or function");
+				lua_pushstring(ML, "fiu must return a table or function");
 			}
 			else if (status == LUA_YIELD)
 			{
-				lua_pushstring(ML, "module can not yield");
+				lua_pushstring(ML, "fiu can not yield");
 			}
 			else if (!lua_isstring(ML, -1))
 			{
-				lua_pushstring(ML, "unknown error while running module");
+				lua_pushstring(ML, "unknown error while running fiu");
 			}
 		}
 

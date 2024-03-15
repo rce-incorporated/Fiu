@@ -1,17 +1,5 @@
-// local DEBUG_OPTIONS = { OFF = 0, Fiu = 1, LUAU = 2, ALL = 3 }
-// local DEBUG_LEVEL = { PRINT = 1, WARN = 2, ALL = 3, IO_STREAM = 4}
+#pragma once
 
-// local TEST_DIR = "tests"
-
-// return {
-// 	TEST_DIR = TEST_DIR,
-// 	TESTS = {
-// 		Conformance = `{TEST_DIR}/Conformance`,
-// 		Staging = `{TEST_DIR}/Staging`,
-// 	},
-// 	DEBUGGING = DEBUG_OPTIONS.ALL,
-// 	DEBUGGING_LEVEL = DEBUG_LEVEL.WARN,
-// }
 #include <string>
 #include <vector>
 #include <map>
@@ -28,10 +16,9 @@
 
 #define FIU_EXPORT std::map<std::string, std::string> FiuExport =
 
-#define DEBUG_LUAU_ENABLE_PRINT 0
-bool FIU_DEBUG_LUAU_ENABLE_PRINT = DEBUG_LUAU_ENABLE_PRINT;
-#define DEBUG_LUAU_ENABLE_WARN 0
-bool FIU_DEBUG_LUAU_ENABLE_WARN = DEBUG_LUAU_ENABLE_WARN;
+// Enable/Disable Debugging Lua Context
+bool FIU_DEBUG_LUAU_ENABLE_PRINT = 0;
+bool FIU_DEBUG_LUAU_ENABLE_WARN = 0;
 
 FIU_TESTCASES {
 	{"Conformance", {

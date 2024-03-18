@@ -4,6 +4,8 @@ print "testing coroutines"
 
 local f
 
+local main = coroutine.running()
+assert(main == nil)
 -- assert(not coroutine.resume(main))
 assert(coroutine.isyieldable()) -- note: we run this in context of a yieldable thread like all other Lua code
 --assert(not pcall(coroutine.yield))
@@ -17,10 +19,14 @@ assert(not pcall(coroutine.status, 0))
 -- tests for multiple yield/resume arguments
 
 local function eqtab (t1, t2)
-    assert(t1 ~= t2)
+  assert(#t1 == #t2)
+  for i = 1, #t1 do
+    local v = t1[i]
+    assert(t2[i] == v)
+  end
 end
 
-x = nil   -- declare x
+_G.x = nil   -- declare x
 function foo (a, ...)
   local x = coroutine.running()
   assert(x == f)
@@ -31,7 +37,7 @@ function foo (a, ...)
   local arg = {...}
   assert(coroutine.isyieldable())
   for i=1,#arg do
-    x = {coroutine.yield(table.unpack(arg[i]))}
+    _G.x = {coroutine.yield(table.unpack(arg[i]))}
   end
   return table.unpack(a)
 end
@@ -43,13 +49,13 @@ local s,a,b,c,d
 s,a,b,c,d = coroutine.resume(f, {1,2,3}, {}, {1}, {'a', 'b', 'c'})
 assert(s and a == nil and coroutine.status(f) == "suspended")
 s,a,b,c,d = coroutine.resume(f)
-eqtab(x, {})
+eqtab(_G.x, {})
 assert(s and a == 1 and b == nil)
 s,a,b,c,d = coroutine.resume(f, 1, 2, 3)
-eqtab(x, {1, 2, 3})
+eqtab(_G.x, {1, 2, 3})
 assert(s and a == 'a' and b == 'b' and c == 'c' and d == nil)
 s,a,b,c,d = coroutine.resume(f, "xuxu")
-eqtab(x, {"xuxu"})
+eqtab(_G.x, {"xuxu"})
 assert(s and a == 1 and b == 2 and c == 3 and d == nil)
 assert(coroutine.status(f) == "dead")
 s, a = coroutine.resume(f, "xuxu")
@@ -60,12 +66,12 @@ assert(not s and string.find(a, "dead") and coroutine.status(f) == "dead")
 local function foo (i) return coroutine.yield(i) end
 f = coroutine.wrap(function ()
   for i=1,10 do
-    assert(foo(i) == x)
+    assert(foo(i) == _G.x)
   end
   return 'a'
 end)
-for i=1,10 do x = i; assert(f(i) == i) end
-x = 'xuxu'; assert(f('xuxu') == 'a')
+for i=1,10 do _G.x = i; assert(f(i) == i) end
+_G.x = 'xuxu'; assert(f('xuxu') == 'a')
 
 -- recursive
 function pf (n, i)
@@ -245,15 +251,15 @@ end
 -- access to locals of erroneous coroutines
 local x = coroutine.create (function ()
             local a = 10
-            f = function () a=a+1; return a end
+            _G.f = function () a=a+1; return a end
             error('x')
           end)
 
 assert(not coroutine.resume(x))
 -- overwrite previous position of local `a'
 assert(not coroutine.resume(x, 1, 1, 1, 1, 1, 1, 1))
-assert(f() == 11)
-assert(f() == 12)
+assert(_G.f() == 11)
+assert(_G.f() == 12)
 
 -- leaving a pending coroutine open
 _X = coroutine.wrap(function ()
@@ -264,6 +270,36 @@ _X = coroutine.wrap(function ()
 
 _X()
 
+
+if not limitedstack then
+  -- bug (stack overflow)
+  local j = 2^9
+  local lim = 1000000    -- (C stack limit; assume 32-bit machine)
+  local t = {lim - 10, lim - 5, lim - 1, lim, lim + 1}
+  for i = 1, #t do
+    local j = t[i]
+    co = coroutine.create(function()
+           local t = {}
+           for i = 1, j do t[i] = i end
+           return table.unpack(t)
+         end)
+    local r, msg = coroutine.resume(co)
+    assert(not r)
+  end
+  co = nil
+end
+
+
+assert(coroutine.running() == main)
+
+-- bug in nCcalls
+local co = coroutine.wrap(function ()
+  local a = {pcall(pcall,pcall,pcall,pcall,pcall,pcall,pcall,error,"hi")}
+  return pcall(assert, table.unpack(a))
+end)
+
+local a = {co()}
+assert(a[10] == "hi")
 
 -- test coroutine with C functions
 local co = coroutine.create(coroutine.yield)

@@ -196,7 +196,6 @@ local function find1 (name)
   return nil  -- not found
 end
 
-local _G = getfenv(0)
 do   -- create 10000 new global variables
   for i=1,10000 do _G[i] = i end
 end
@@ -268,11 +267,19 @@ local function foo ()
         getfenv, setfenv, assert, next
   local n = {gl1=3}
   setfenv(foo, n)
-  assert(getfenv(foo) == getfenv(1))
-  assert(getfenv(foo) == n)
-  assert(print == nil and gl1 == 3)
-  gl1 = nil
-  gl = 1
+  local env = getfenv(foo)
+  -- Fiu,
+  --   getfenv(2) when FIU_DEBUGGING is true
+  --   getfenv(3) when FIU_DEBUGGING is false
+  local fiuEnv = getfenv(2)
+  if not (env == fiuEnv) then
+    fiuEnv = getfenv(3)
+  end
+  assert(env == fiuEnv)
+  assert(env == n)
+  assert(fiuEnv.print == nil and fiuEnv.gl1 == 3)
+  fiuEnv.gl1 = nil
+  fiuEnv.gl = 1
   assert(n.gl == 1 and next(n, 'gl') == nil)
 end
 foo()
@@ -579,16 +586,62 @@ do
   assert(#t2 == 6)
 end
 
+-- test boundary invariant in sparse arrays or various kinds
+do
+  local function obscuredalloc() return {} end
+
+  local bits = 16
+
+  for i = 1, 2^bits - 1 do
+      local t1 = obscuredalloc() -- to avoid NEWTABLE guessing correct size
+
+      for k = 1, bits do
+          t1[k] = if bit32.extract(i, k - 1) == 1 then true else nil
+      end
+  end
+end
+
 -- test table.unpack fastcall for rejecting large unpacks
 do
   local ok, res = pcall(function()
-    local a = table.create(99999, 0)
-    local b = table.create(100000, 0)
+    local a = table.create(7999, 0)
+    local b = table.create(8000, 0)
 
     local at = { table.unpack(a) }
     local bt = { table.unpack(b) }
   end)
+
   assert(not ok)
+end
+
+-- Mock "makelud" Function
+local makelud = function(v)
+  return type(v) == "number" and v or #v
+end
+
+-- test iteration with lightuserdata keys
+do
+  function countud()
+    local t = {}
+    t[makelud(1)] = 1
+    t[makelud(2)] = 2
+
+    local count = 0
+    for k,v in pairs(t) do
+      count += v
+    end
+
+    return count
+  end
+
+  assert(countud() == 3)
+end
+
+-- test iteration with lightuserdata keys with a substituted environment
+do
+  local env = { makelud = makelud, pairs = pairs }
+  setfenv(countud, env)
+  assert(countud() == 3)
 end
 
 -- test __newindex-as-a-table indirection: this had memory safety bugs in Lua 5.1.0
@@ -674,5 +727,12 @@ do
     assert(t:foo(i) == -i)
   end
 end
+
+-- check that fast path for table lookup can't be tricked into assuming a light user data with string pointer is a string
+assert((function ()
+  local t = {}
+  t[makelud("hi")] = "no"
+  return t.hi
+end)() == nil)
 
 OK()

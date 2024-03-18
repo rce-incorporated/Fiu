@@ -26,7 +26,9 @@ target_link_libraries(Luau.Fiu.CLI Luau.Common)
 target_link_libraries(Luau.Fiu.CLI Luau.Config)
 
 add_executable(fiu-tests
-  Utils/uformat.h
+  Utils/Formatter.h
+  Utils/Context.h
+  Utils/Fiu.h
 
   Config.h
 

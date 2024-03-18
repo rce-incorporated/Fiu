@@ -196,7 +196,9 @@ end
 -- pairs/ipairs/next may be substituted through getfenv
 -- however, they *must* be substituted with functions - we don't support them falling back to generalized iteration
 function testgetfenv()
-  local env = getfenv(1)
+  -- Fiu enviroment is nested, in this test context, it would edit the enviroment of global
+  -- so we do `getfenv(0)`
+  local env = getfenv(0)
   env.pairs = function() return "nope" end
   env.ipairs = function() return "nope" end
   env.next = {1, 2, 3}

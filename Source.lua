@@ -39,7 +39,7 @@ local ttistable = function(v) return type(v) == "table" end
 local ttisuserdata = function(v) return type(v) == "userdata" end
 local ttisfunction = function(v) return type(v) == "function" end
 
-local hastm = function(mt, e) return if mt then rawget(mt, e) ~= nil else false end
+local hastm = function(mt, e) return if ttistable(mt) then rawget(mt, e) ~= nil else false end
 
 local TM_CALL = "__call"
 local TM_ITER = "__iter"

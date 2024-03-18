@@ -151,19 +151,20 @@ local opList = {
 
 local LUA_MULTRET = -1
 local LUA_GENERALIZED_TERMINATOR = -2
+
 local function luau_deserialize(bytecode)
 	local stream = buffer_fromstring(bytecode)
-	local position = 0
+	local cursor = 0
 
 	local function readByte()
-		local byte = buffer_readu8(stream, position)
-		position = position + 1
+		local byte = buffer_readu8(stream, cursor)
+		cursor = cursor + 1
 		return byte
 	end
 
 	local function readWord()
-		local word = buffer_readu32(stream, position)
-		position = position + 4
+		local word = buffer_readu32(stream, cursor)
+		cursor = cursor + 4
 		return word
 	end
 
@@ -187,8 +188,8 @@ local function luau_deserialize(bytecode)
 		if size == 0 then
 			return ""
 		else
-			local str = buffer_readstring(stream, position, size)
-			position = position + size
+			local str = buffer_readstring(stream, cursor, size)
+			cursor = cursor + size
 
 			return str
 		end
@@ -196,10 +197,10 @@ local function luau_deserialize(bytecode)
 
 	local luauVersion = readByte()
 	local typesVersion = 0
-	if luauVersion == 0 then 
-		error("The bytecode that was passed was an error message!",0)
+	if luauVersion == 0 then
+		error("the provided bytecode is an error message",0)
 	elseif luauVersion < 3 or luauVersion > 5 then
-		error("Unsupported bytecode provided!",0)
+		error("the version of the provided bytecode is unsupported",0)
 	elseif luauVersion >= 4 then
 		typesVersion = readByte()
 	end
@@ -306,7 +307,7 @@ local function luau_deserialize(bytecode)
 		if luauVersion >= 4 then
 			readByte() --// flags 
 			local typesize = readVarInt();
-			position += typesize;
+			cursor = cursor + typesize;
 		end
 
 		local sizecode = readVarInt()
@@ -334,8 +335,8 @@ local function luau_deserialize(bytecode)
 			elseif kt == 1 then --// Bool
 				k = readByte() ~= 0
 			elseif kt == 2 then --// Number
-				local d = buffer_readf64(stream, position)
-				position = position + 8
+				local d = buffer_readf64(stream, cursor)
+				cursor = cursor + 8
 				k = d
 			elseif kt == 3 then --// String
 				k = stringList[readVarInt()]
@@ -343,15 +344,15 @@ local function luau_deserialize(bytecode)
 				k = readWord()
 			elseif kt == 5 then --// Table
 				local dataLength = readVarInt()
-				local data = table_create(dataLength)
+				k = table_create(dataLength)
+
 				for i = 1, dataLength do
-					data[i] = readVarInt()
+					k[i] = readVarInt()
 				end
-				k = data
 			elseif kt == 6 then --// Closure
 				k = readVarInt()
 			elseif kt == 7 then --// Vector
-				error("Fiu does not currently support vector constants!",0)
+				error("Fiu currently does not support vector constants",0)
 			end
 
 			klist[i] = k
@@ -429,7 +430,7 @@ local function luau_deserialize(bytecode)
 
 	local mainProto = protoList[readVarInt() + 1]
 
-	assert(position == #bytecode, "Deserializer position mismatch")
+	assert(cursor == #bytecode, "deserializer cursor position mismatch")
 
 	return {
 		stringList = stringList;
@@ -465,7 +466,7 @@ local function luau_load(module, env)
 				if op == 2 then --[[ LOADNIL ]]
 					stack[inst.A] = nil
 				elseif op == 3 then --[[ LOADB ]]
-					stack[inst.A] = inst.B ~= 0
+					stack[inst.A] = inst.B == 1
 					pc += inst.C
 				elseif op == 4 then --[[ LOADN ]]
 					stack[inst.A] = inst.D
@@ -474,15 +475,15 @@ local function luau_load(module, env)
 				elseif op == 6 then --[[ MOVE ]]
 					stack[inst.A] = stack[inst.B]
 				elseif op == 7 then --[[ GETGLOBAL ]]
-					pc += 1
-
 					local kv = inst.K
 					stack[inst.A] = env[kv]
-				elseif op == 8 then --[[ SETGLOBAL ]]
-					pc += 1 --// adjust for aux 
 
+					pc += 1 --// adjust for aux
+				elseif op == 8 then --[[ SETGLOBAL ]]
 					local kv = inst.K
 					env[kv] = stack[inst.A]
+
+					pc += 1 --// adjust for aux
 				elseif op == 9 then --[[ GETUPVAL ]]
 					local uv = upvals[inst.B + 1]
 					stack[inst.A] = uv.store[uv.index]
@@ -499,8 +500,6 @@ local function luau_load(module, env)
 						end
 					end
 				elseif op == 12 then --[[ GETIMPORT ]]
-					pc += 1 --// adjust for aux 
-
 					local count = inst.KC
 					if count == 1 then
 						stack[inst.A] = env[inst.K0]
@@ -509,20 +508,22 @@ local function luau_load(module, env)
 					elseif count == 3 then
 						stack[inst.A] = env[inst.K0][inst.K1][inst.K2]
 					end
+
+					pc += 1 --// adjust for aux 
 				elseif op == 13 then --[[ GETTABLE ]]
 					stack[inst.A] = stack[inst.B][stack[inst.C]]
 				elseif op == 14 then --[[ SETTABLE ]]
 					stack[inst.B][stack[inst.C]] = stack[inst.A]
 				elseif op == 15 then --[[ GETTABLEKS ]]
-					pc += 1 --// adjust for aux 
-
 					local index = inst.K
 					stack[inst.A] = stack[inst.B][index]
-				elseif op == 16 then --[[ SETTABLEKS ]]
-					pc += 1 --// adjust for aux
 
+					pc += 1 --// adjust for aux 
+				elseif op == 16 then --[[ SETTABLEKS ]]
 					local index = inst.K
 					stack[inst.B][index] = stack[inst.A]
+
+					pc += 1 --// adjust for aux
 				elseif op == 17 then --[[ GETTABLEN ]]
 					stack[inst.A] = stack[inst.B][inst.C + 1]
 				elseif op == 18 then --[[ SETTABLEN ]]
@@ -530,10 +531,11 @@ local function luau_load(module, env)
 				elseif op == 19 then --[[ NEWCLOSURE ]]
 					local newPrototype = protolist[protos[inst.D + 1]]
 
-					local upvalues = {}
+					local nups = newPrototype.nups
+					local upvalues = table.create(nups)
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 
-					for i = 1, newPrototype.nups do
+					for i = 1, nups do
 						local pseudo = code[pc]
 
 						pc += 1
@@ -566,8 +568,6 @@ local function luau_load(module, env)
 						end
 					end
 				elseif op == 20 then --[[ NAMECALL ]]
-					pc += 1 --// adjust for aux 
-
 					local A = inst.A
 					local B = inst.B
 
@@ -576,6 +576,8 @@ local function luau_load(module, env)
 
 					stack[A + 1] = sb
 					stack[A] = sb[kv]
+
+					pc += 1 --// adjust for aux 
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
@@ -720,9 +722,9 @@ local function luau_load(module, env)
 				elseif op == 52 then --[[ LENGTH ]]
 					stack[inst.A] = #stack[inst.B]
 				elseif op == 53 then --[[ NEWTABLE ]]
-					pc += 1 --// adjust for aux 
-
 					stack[inst.A] = table_create(inst.aux)
+
+					pc += 1 --// adjust for aux 
 				elseif op == 54 then --[[ DUPTABLE ]]
 					local template = inst.K
 					local serialized = {}
@@ -731,8 +733,6 @@ local function luau_load(module, env)
 					end
 					stack[inst.A] = serialized
 				elseif op == 55 then --[[ SETLIST ]]
-					pc += 1 --// adjust for aux 
-
 					local A = inst.A
 					local B = inst.B
 					local c = inst.C - 1
@@ -742,8 +742,11 @@ local function luau_load(module, env)
 					end
 
 					table_move(stack, B, B + c - 1, inst.aux, stack[A])
+
+					pc += 1 --// adjust for aux 
 				elseif op == 56 then --[[ FORNPREP ]]
 					local A = inst.A
+
 					local limit = stack[A]
 					if not ttisnumber(limit) then
 						local number = tonumber(limit)
@@ -755,6 +758,7 @@ local function luau_load(module, env)
 						stack[A] = number
 						limit = number
 					end
+
 					local step = stack[A + 1]
 					if not ttisnumber(step) then
 						local number = tonumber(step)
@@ -766,6 +770,7 @@ local function luau_load(module, env)
 						stack[A + 1] = number
 						step = number
 					end
+
 					local index = stack[A + 2]
 					if not ttisnumber(index) then
 						local number = tonumber(index)
@@ -836,6 +841,7 @@ local function luau_load(module, env)
 						if not ok then
 							error(vals)
 						end
+
 						if vals == LUA_GENERALIZED_TERMINATOR then 
 							generalized_iterators[inst] = nil
 							pc += 1
@@ -870,16 +876,16 @@ local function luau_load(module, env)
 					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
-
-					local upvalues = {}
+					
+					local nups = newPrototype.nups
+					local upvalues = table.create(nups)
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 
-					for i = 1, newPrototype.nups do
+					for i = 1, nups do
 						local pseudo = code[pc]
 						pc += 1
 
 						local type = pseudo.A
-
 						if type == 0 then --// value
 							local upvalue = {
 								value = stack[pseudo.B],
@@ -888,6 +894,7 @@ local function luau_load(module, env)
 							upvalue.store = upvalue
 
 							upvalues[i] = upvalue
+
 						--// references dont get handled by DUPCLOSURE
 						elseif type == 2 then --// upvalue
 							upvalues[i] = upvals[pseudo.B + 1]
@@ -896,17 +903,17 @@ local function luau_load(module, env)
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					--[[ Handled by wrapper ]]
 				elseif op == 66 then --[[ LOADKX ]]
-					pc += 1 --// adjust for aux 
-
 					local kv = inst.K
 					stack[inst.A] = kv
+
+					pc += 1 --// adjust for aux 
 				elseif op == 67 then --[[ JUMPX ]]
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
 				elseif op == 70 then --[[ CAPTURE ]]
 					--[[ Handled by CLOSURE ]]
-					error("Unhandled CAPTURE")
+					error("encountered unhandled CAPTURE")
 				elseif op == 71 then --[[ SUBRK ]]
 					stack[inst.A] = inst.K - stack[inst.C]
 				elseif op == 72 then --[[ DIVRK ]]
@@ -914,9 +921,11 @@ local function luau_load(module, env)
 				elseif op == 73 then --[[ FASTCALL1 ]]
 					--[[ Skipped ]]
 				elseif op == 74 then --[[ FASTCALL2 ]]
-					pc += 1 --// Skipped and skips aux instruction
+					--[[ Skipped ]]
+					pc += 1 --// adjust for aux
 				elseif op == 75 then --[[ FASTCALL2K ]]
-					pc += 1 --// Skipped and skips aux instruction
+					--[[ Skipped ]]
+					pc += 1 --// adjust for aux
 				elseif op == 76 then --[[ FORGPREP ]]
 					local iterator = stack[inst.A]
 
@@ -1016,7 +1025,7 @@ local function luau_load(module, env)
 			if result[1] then
 				return table_unpack(result, 2, result.n)
 			else
-				error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
+				return error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
 			end
 		end
 		return wrapped

@@ -1,4 +1,4 @@
-getfenv().a = { b = { c = "HELLO" } }
+getfenv(0).a = { b = { c = "HELLO" } }
 
 print(a.b)
 print(a.b.c)

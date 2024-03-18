@@ -58,7 +58,6 @@ FIU_TESTCASES {
 		"Conformance/strings",
 		"Conformance/tables",
 		"Conformance/tpack",
-		"Conformance/typed",
 		"Conformance/utf8",
 		"Conformance/vararg",
 

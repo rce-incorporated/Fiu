@@ -37,9 +37,11 @@ FIU_EXPORT {
 FIU_TESTCASES {
 	{"Conformance", {
 		// Main FIU/Luau tests
+		"Conformance/assert",
 		"Conformance/attrib",
 		"Conformance/basic",
 		"Conformance/bitwise",
+		"Conformance/buffers",
 		"Conformance/calls",
 		"Conformance/clear",
 		"Conformance/constructs",

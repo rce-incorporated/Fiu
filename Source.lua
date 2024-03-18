@@ -1,16 +1,23 @@
 local FIU_DEBUGGING = true
 
--- // Some functions dont have a builtin so its faster to make them locally accessible, error and string.format don't need them since they stop execution
-local table_pack = table.pack
-local table_create = table.create
+-- // Some functions dont have a builtin so its faster to make them locally accessible
+-- // And for enviroment changes in vm, are not suppose not alter the behavior of the vm
+local type = type
+local pcall = pcall
+local error = error
+local tonumber = tonumber
+
+local string_format = string.format
+
 local table_move = table.move
+local table_pack = table.pack
+local table_unpack = table.unpack
+local table_create = table.create
+local table_insert = table.insert
 
 local coroutine_create = coroutine.create
 local coroutine_yield = coroutine.yield
 local coroutine_resume = coroutine.resume
-
-local tonumber = tonumber
-local pcall = pcall
 
 local buffer_fromstring = buffer.fromstring
 local buffer_readu8 = buffer.readu8
@@ -18,12 +25,24 @@ local buffer_readu32 = buffer.readu32
 local buffer_readstring = buffer.readstring
 local buffer_readf64 = buffer.readf64
 
-local bit32_bnot = bit32.bnot
 local bit32_bor = bit32.bor
 local bit32_band = bit32.band
+local bit32_btest = bit32.btest
 local bit32_rshift = bit32.rshift
 local bit32_lshift = bit32.lshift
 local bit32_extract = bit32.extract
+
+local ttisnumber = function(v) return type(v) == "number" end
+local ttisboolean = function(v) return type(v) == "boolean" end
+local ttisstring = function(v) return type(v) == "string" end
+local ttistable = function(v) return type(v) == "table" end
+local ttisuserdata = function(v) return type(v) == "userdata" end
+local ttisfunction = function(v) return type(v) == "function" end
+
+local hastm = function(mt, e) return if mt then rawget(mt, e) ~= nil else false end
+
+local TM_CALL = "__call"
+local TM_ITER = "__iter"
 
 -- // opList contains information about the instruction, each instruction is defined in this format:
 -- // {OP_NAME, OP_MODE, K_MODE, HAS_AUX}
@@ -116,8 +135,8 @@ local opList = {
 	{ "FASTCALL", 3, 0, false },
 	{ "COVERAGE", 5, 0, false },
 	{ "CAPTURE", 2, 0, false },
-	{ "SUBRK", 3, 2, false },
-	{ "DIVRK", 3, 2, false },
+	{ "SUBRK", 3, 7, false },
+	{ "DIVRK", 3, 7, false },
 	{ "FASTCALL1", 3, 0, false },
 	{ "FASTCALL2", 3, 0, true },
 	{ "FASTCALL2K", 3, 1, true },
@@ -154,7 +173,7 @@ local function luau_deserialize(bytecode)
 		for i = 0, 4 do
 			local value = readByte()
 			result = bit32_bor(result, bit32_lshift(bit32_band(value, 0x7F), i * 7))
-			if not bit32.btest(value, 0x80) then
+			if not bit32_btest(value, 0x80) then
 				break
 			end
 		end
@@ -210,7 +229,7 @@ local function luau_deserialize(bytecode)
 			usesAux = usesAux;
 		}
 
-		table.insert(codeList, inst)
+		table_insert(codeList, inst)
 
 		if opmode == 1 then --[[ A ]]
 			inst.A = bit32_band(bit32_rshift(value, 8), 0xFF)
@@ -234,7 +253,7 @@ local function luau_deserialize(bytecode)
 			local aux = readWord()
 			inst.aux = aux
 
-			table.insert(codeList, {value = aux})
+			table_insert(codeList, {value = aux})
 		end
 
 		return usesAux
@@ -273,6 +292,8 @@ local function luau_deserialize(bytecode)
 		elseif kmode == 6 then --// AUX number low 24 bits
 			inst.K = k[bit32_extract(inst.aux, 0, 24) + 1]
 			inst.KN = bit32_extract(inst.aux, 31, 1) == 1
+		elseif kmode == 7 then --// B
+			inst.K = k[inst.B + 1]
 		end
 	end
 
@@ -284,7 +305,8 @@ local function luau_deserialize(bytecode)
 
 		if luauVersion >= 4 then
 			readByte() --// flags 
-			readVarInt()
+			local typesize = readVarInt();
+			position += typesize;
 		end
 
 		local sizecode = readVarInt()
@@ -370,6 +392,10 @@ local function luau_deserialize(bytecode)
 				readVarInt()
 				readVarInt()
 				readByte()
+			end
+			local sizeupvalues = readVarInt()
+			for i = 1, sizeupvalues do
+				readVarInt()
 			end
 		end
 
@@ -536,11 +562,9 @@ local function luau_load(module, env)
 
 							upvalues[i] = prev
 						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B]
+							upvalues[i] = upvals[pseudo.B + 1]
 						end
 					end
-
-					
 				elseif op == 20 then --[[ NAMECALL ]]
 					pc += 1 --// adjust for aux 
 
@@ -558,7 +582,7 @@ local function luau_load(module, env)
 					local params = if B == 0 then top - A else B - 1
 					local func = stack[A]
 					local ret_list = table_pack(
-						func(table.unpack(stack, A + 1, A + params))
+						func(table_unpack(stack, A + 1, A + params))
 					)
 
 					local ret_num = ret_list.n
@@ -582,7 +606,7 @@ local function luau_load(module, env)
 						nresults = B - 1
 					end
 
-					return table.unpack(stack, A, A + nresults - 1)
+					return table_unpack(stack, A, A + nresults - 1)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
@@ -721,7 +745,7 @@ local function luau_load(module, env)
 				elseif op == 56 then --[[ FORNPREP ]]
 					local A = inst.A
 					local limit = stack[A]
-					if type(limit) ~= "number" then
+					if not ttisnumber(limit) then
 						local number = tonumber(limit)
 
 						if number == nil then
@@ -732,7 +756,7 @@ local function luau_load(module, env)
 						limit = number
 					end
 					local step = stack[A + 1]
-					if type(step) ~= "number" then
+					if not ttisnumber(step) then
 						local number = tonumber(step)
 
 						if number == nil then
@@ -743,7 +767,7 @@ local function luau_load(module, env)
 						step = number
 					end
 					local index = stack[A + 2]
-					if type(index) ~= "number" then
+					if not ttisnumber(index) then
 						local number = tonumber(index)
 
 						if number == nil then
@@ -754,15 +778,15 @@ local function luau_load(module, env)
 						index = number
 					end
 
-					if step > 0 then 
-						if index > limit then 
-							pc += inst.D 
-						end 
-					else 
-						if limit > index then 
+					if step > 0 then
+						if not (index <= limit) then
 							pc += inst.D
-						end 
-					end 
+						end
+					else
+						if not (limit <= index) then
+							pc += inst.D
+						end
+					end
 				elseif op == 57 then --[[ FORNLOOP ]]
 					local A = inst.A
 					local limit = stack[A]
@@ -771,16 +795,15 @@ local function luau_load(module, env)
 
 					stack[A + 2] = index
 
-					if step > 0 then 
-						if index <= limit then 
-							pc += inst.D 
-						end 
-					else 
-						if limit <= index then 
-							
+					if step > 0 then
+						if index <= limit then
 							pc += inst.D
-						end 
-					end 
+						end
+					else
+						if limit <= index then
+							pc += inst.D
+						end
+					end
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
 					local aux = inst.aux
@@ -789,10 +812,17 @@ local function luau_load(module, env)
 					top = A + 6
 
 					local it = stack[A]
+					local callable = false
 
-					if type(it) == "function" then 
+					if ttistable(it) or ttisuserdata(it) then
+						local mt = getmetatable(it)
+						if hastm(mt, TM_CALL) and not hastm(mt, TM_ITER) then
+							callable = true
+						end
+					end
+
+					if ttisfunction(it) or callable then 
 						local vals = { it(stack[A + 1], stack[A + 2]) }
-
 						table_move(vals, 1, res, A + 3, stack)
 
 						if stack[A + 3] ~= nil then
@@ -801,30 +831,32 @@ local function luau_load(module, env)
 						else
 							pc += 1
 						end
-					else 
-						local _, vals = coroutine_resume(generalized_iterators[inst])
-
+					else
+						local ok, vals = coroutine_resume(generalized_iterators[inst])
+						if not ok then
+							error(vals)
+						end
 						if vals == LUA_GENERALIZED_TERMINATOR then 
 							generalized_iterators[inst] = nil
 							pc += 1
-						else 
+						else
 							table_move(vals, 1, res, A + 3, stack)
 
 							stack[A + 2] = stack[A + 3]
 							pc += inst.D
 						end
-					end 
+					end
 				elseif op == 59 then --[[ FORGPREP_INEXT ]]
-					if type(stack[inst.A]) ~= "function" then 
-						error("FORGPREP_INEXT encountered non-function value")
-					end 
+					if not ttisfunction(stack[inst.A]) then
+						error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_INEXT encountered non-function value
+					end
 
 					pc += inst.D
-				elseif op == 61 then --[[ FORGPREP_NEXT ]]			
-					if type(stack[inst.A]) ~= "function" then 
-						error("FORGPREP_NEXT encountered non-function value")
-					end 
-		
+				elseif op == 61 then --[[ FORGPREP_NEXT ]]
+					if not ttisfunction(stack[inst.A]) then
+						error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_NEXT encountered non-function value
+					end
+
 					pc += inst.D
 				elseif op == 63 then --[[ GETVARARGS ]]
 					local A = inst.A
@@ -858,9 +890,9 @@ local function luau_load(module, env)
 							upvalues[i] = upvalue
 						--// references dont get handled by DUPCLOSURE
 						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B]
+							upvalues[i] = upvals[pseudo.B + 1]
 						end
-					end					
+					end
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					--[[ Handled by wrapper ]]
 				elseif op == 66 then --[[ LOADKX ]]
@@ -876,9 +908,9 @@ local function luau_load(module, env)
 					--[[ Handled by CLOSURE ]]
 					error("Unhandled CAPTURE")
 				elseif op == 71 then --[[ SUBRK ]]
-					stack[inst.A] = inst.K - stack[inst.B]  
+					stack[inst.A] = inst.K - stack[inst.C]
 				elseif op == 72 then --[[ DIVRK ]]
-					stack[inst.A] = inst.K / stack[inst.B]  
+					stack[inst.A] = inst.K / stack[inst.C]
 				elseif op == 73 then --[[ FASTCALL1 ]]
 					--[[ Skipped ]]
 				elseif op == 74 then --[[ FASTCALL2 ]]
@@ -888,19 +920,22 @@ local function luau_load(module, env)
 				elseif op == 76 then --[[ FORGPREP ]]
 					local iterator = stack[inst.A]
 
-					if type(iterator) ~= "function" then 
-						local loopInstruction = code[pc + inst.D]
-						if generalized_iterators[loopInstruction] == nil then 
-							--// Thanks @bmcq-0 and @memcorrupt for the spoonfeed
-							local function gen_iterator()
-								for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in iterator do 
-									coroutine_yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
+					if not ttisfunction(iterator) then
+						local mt = getmetatable(iterator)
+						if not mt or not mt.__call then
+							local loopInstruction = code[pc + inst.D]
+							if generalized_iterators[loopInstruction] == nil then 
+								--// Thanks @bmcq-0 and @memcorrupt for the spoonfeed
+								local function gen_iterator()
+									for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in iterator do 
+										coroutine_yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
+									end
+	
+									coroutine_yield(LUA_GENERALIZED_TERMINATOR)
 								end
-
-								coroutine_yield(LUA_GENERALIZED_TERMINATOR)
+	
+								generalized_iterators[loopInstruction] = coroutine_create(gen_iterator)
 							end
-
-							generalized_iterators[loopInstruction] = coroutine_create(gen_iterator)
 						end
 					end
 
@@ -916,8 +951,9 @@ local function luau_load(module, env)
 				elseif op == 78 then --[[ JUMPXEQKB ]]
 					local kv = inst.K
 					local kn = inst.KN
+					local ra = stack[inst.A]
 
-					if ((stack[inst.A] and true or false) == (kv and true or false)) ~= kn then
+					if (ttisboolean(ra) and ra == (kv and true or false)) ~= kn then
 						pc += inst.D
 					else
 						pc += 1
@@ -925,8 +961,9 @@ local function luau_load(module, env)
 				elseif op == 79 then --[[ JUMPXEQKN ]]
 					local kv = inst.K
 					local kn = inst.KN
+					local ra = stack[inst.A]
 
-					if (stack[inst.A] == kv) ~= kn then
+					if (ttisnumber(ra) and ra == kv) ~= kn then
 						pc += inst.D
 					else
 						pc += 1
@@ -934,8 +971,9 @@ local function luau_load(module, env)
 				elseif op == 80 then --[[ JUMPXEQKS ]]
 					local kv = inst.K
 					local kn = inst.KN
+					local ra = stack[inst.A]
 
-					if (stack[inst.A] == kv) ~= kn then
+					if (ttisstring(ra) and ra == kv) ~= kn then
 						pc += inst.D
 					else
 						pc += 1
@@ -976,9 +1014,9 @@ local function luau_load(module, env)
 			end
 
 			if result[1] then
-				return table.unpack(result, 2, result.n)
+				return table_unpack(result, 2, result.n)
 			else
-				error(string.format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
+				error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
 			end
 		end
 		return wrapped

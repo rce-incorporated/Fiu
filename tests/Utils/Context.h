@@ -7,16 +7,73 @@
 #include <optional>
 #include <string>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
-std::optional<std::string> readLuauFile(const std::string& name)
+using namespace std;
+
+bool isWithinBasePath(filesystem::path base, filesystem::path path) {
+	try {
+		filesystem::path basePath = filesystem::absolute(base);
+		filesystem::path testPath = filesystem::absolute(path);
+		
+		filesystem::path relativePath = testPath.lexically_relative(basePath);
+
+		return relativePath.string().find("..") == std::string::npos;
+	} catch(const filesystem::filesystem_error& e) {
+		std::cerr << e.what() << '\n';
+		return false;
+	}
+}
+
+optional<string> readFileWithStream(const char* name)
 {
-	std::optional<std::string> source = readFile(name + ".luau");
+	ifstream fileStream = ifstream(name);
+	if (!fileStream)
+		return nullopt;
+	
+	string result;
+	string line;
+	while (getline(fileStream, line))
+	{
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();  // remove carriage return character
+
+		result += line + '\n';
+	}
+
+	// Skip first line if it's a shebang
+	if (result.size() > 2 && result[0] == '#' && result[1] == '!')
+		result.erase(0, result.find('\n') + 1);
+
+	return result;
+}
+
+optional<string> readLuauFile(const string& name)
+{
+	optional<string> source = readFile(name + ".luau");
 	if (!source)
 		source = readFile(name + ".lua");
 	return source;
 }
 
-std::vector<Luau::HotComment> getHotComments(std::string source, const Luau::ParseOptions& parseOptions)
+
+void writeFileWithStream(filesystem::path cwd, const string& name, const string& source)
+{
+	filesystem::path path = name;
+
+	if (!isWithinBasePath(cwd, path))
+		throw runtime_error("Path is not within CWD");
+
+	if (!filesystem::exists(path.parent_path()))
+		filesystem::create_directories(path.parent_path());
+
+	ofstream file(name);
+	file << source;
+	file.close();
+}
+
+vector<Luau::HotComment> getHotComments(string source, const Luau::ParseOptions& parseOptions)
 {
 	Luau::Allocator allocator;
 	Luau::AstNameTable names(allocator);
@@ -31,9 +88,9 @@ std::vector<Luau::HotComment> getHotComments(std::string source, const Luau::Par
 struct CompareResult
 {
 	bool success;
-	std::string message = "";
-	std::string ctxA = "";
-	std::string ctxB = "";
+	string message = "";
+	string ctxA = "";
+	string ctxB = "";
 };
 
 CompareResult compareValue(lua_State* L, int a, int b)
@@ -59,7 +116,7 @@ CompareResult compareValue(lua_State* L, int a, int b)
 			lua_pushvalue(L, -2);
 			lua_gettable(L, a);
 			int n = lua_gettop(L);
-			std::string key = formatValue(L, n-2, 0);
+			string key = formatValue(L, n-2, 0);
 			CompareResult res = compareValue(L, n, n-1);
 			if (!res.success)
 			{
@@ -82,7 +139,7 @@ CompareResult compareValue(lua_State* L, int a, int b)
 			lua_pushvalue(L, -2);
 			lua_gettable(L, b);
 			int n = lua_gettop(L);
-			std::string key = formatValue(L, n-2, 0);
+			string key = formatValue(L, n-2, 0);
 			CompareResult res = compareValue(L, n, n-1);
 			if (!res.success)
 			{

@@ -4,9 +4,11 @@
 #include <vector>
 #include <map>
 
-#define STYLE_DIM "\x1b[2m"          // Dim the text
-#define STYLE_BOLD "\x1b[1m"         // Bold/brighten the text
-#define STYLE_RESET "\x1b[0m"        // Reset all styles to default
+using namespace std;
+
+#define STYLE_DIM "\x1b[2m"       // Dim the text
+#define STYLE_BOLD "\x1b[1m"      // Bold/brighten the text
+#define STYLE_RESET "\x1b[0m"     // Reset all styles to default
 
 #define COLOR_BLACK "\x1b[30m"    // ANSI escape code for black
 #define COLOR_RED "\033[1;31m"    // ANSI escape code for red
@@ -21,9 +23,9 @@
 #define ERROR_SYMBOL (COLOR_RED "X" COLOR_RESET)
 #define SUCCESS_SYMBOL (COLOR_GREEN "+" COLOR_RESET)
 
-#define FIU_TESTCASES std::map<std::string, std::vector<std::string>> TestCases =
+#define FIU_TESTCASES map<string, vector<string>> TestCases =
 
-#define FIU_EXPORT std::map<std::string, std::string> FiuExport =
+#define FIU_EXPORT map<string, string> FiuExport =
 
 // Enable/Disable Debugging Lua Context
 bool DEBUG_LUAU_ENABLE_PRINT = false;

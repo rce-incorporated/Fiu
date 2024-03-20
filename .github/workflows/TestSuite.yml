@@ -18,7 +18,7 @@ jobs:
 
       - name: Make tests
         run: |
-          cmake ./tests
+          cmake -DCMAKE_BUILD_TYPE=Release ./tests
           cmake --build . --target=fiu-tests
       
       - name: Run tests

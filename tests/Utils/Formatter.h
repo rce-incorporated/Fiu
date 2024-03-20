@@ -10,34 +10,36 @@
 #include <utility>
 #include <iostream>
 
+using namespace std;
+
 template <typename... Args>
-std::string uformat(const std::string& format, Args&&... args)
+string uformat(const string& format, Args&&... args)
 {
 	constexpr size_t bufferSize = 512;
 	char buffer[bufferSize];
-	int result = snprintf(buffer, bufferSize, format.c_str(), std::forward<Args>(args)...);
+	int result = snprintf(buffer, bufferSize, format.c_str(), forward<Args>(args)...);
 	if (result < 0 || static_cast<size_t>(result) >= bufferSize)
 	{
 		return "Error: Formatting failed.";
 	}
-	return std::string(buffer);
+	return string(buffer);
 };
 
-std::string applyColor(const char* color, const char* value)
+string applyColor(const char* color, const char* value)
 {
 	return uformat("%s%s%s", color, value, COLOR_RESET);
 };
-std::string applyColor(const char* color, const std::string& value)
+string applyColor(const char* color, const string& value)
 {
 	return applyColor(color, value.c_str());
 };
 
-std::string formatValue(lua_State* L, int index, int depth = 0, bool asKey = false)
+string formatValue(lua_State* L, int index, int depth = 0, bool asKey = false)
 {
-	std::string finalValue;
+	string finalValue;
 
 	const int MAX_FORMAT_DEPTH = 4;
-	const std::string INDENT = "    ";
+	const string INDENT = "    ";
 
 	if (depth >= MAX_FORMAT_DEPTH)
 	{
@@ -60,12 +62,12 @@ std::string formatValue(lua_State* L, int index, int depth = 0, bool asKey = fal
 				lua_pop(L, 1);
 				break;
 			case LUA_TSTRING:
-				finalValue = applyColor(COLOR_GREEN, "\"" + std::string(lua_tostring(L, index)) + "\"");
+				finalValue = applyColor(COLOR_GREEN, "\"" + string(lua_tostring(L, index)) + "\"");
 				break;
 			case LUA_TTABLE:
 				if (asKey)
 				{
-					finalValue = applyColor(COLOR_MAGENTA, "<"+ std::string(luaL_tolstring(L, index, nullptr)) + ">");
+					finalValue = applyColor(COLOR_MAGENTA, "<"+ string(luaL_tolstring(L, index, nullptr)) + ">");
 					lua_pop(L, 1);
 					break;
 				}
@@ -92,7 +94,7 @@ std::string formatValue(lua_State* L, int index, int depth = 0, bool asKey = fal
 				finalValue.append(applyColor(STYLE_DIM, "}"));
 				break;
 			default:
-				finalValue = applyColor(COLOR_MAGENTA, "<"+ std::string(luaL_tolstring(L, index, nullptr)) + ">");
+				finalValue = applyColor(COLOR_MAGENTA, "<"+ string(luaL_tolstring(L, index, nullptr)) + ">");
 				lua_pop(L, 1);
 				break;
 		}
@@ -122,7 +124,7 @@ int formatPrint(lua_State* L)
 			lua_pop(L, 1);
 			break;
 		default:
-			std::string sf = formatValue(L, i, 0);
+			string sf = formatValue(L, i, 0);
 			fwrite(sf.c_str(), 1, sf.size(), stdout);
 			break;
 		}
@@ -141,7 +143,7 @@ void loadFormattedWarn(lua_State* L)
 {
 	lua_pushcfunction(L, [](lua_State* L) -> int
 	{
-		std::string warnTag = "[" + std::string(applyColor(COLOR_YELLOW, "WARN")) + "] ";
+		string warnTag = "[" + string(applyColor(COLOR_YELLOW, "WARN")) + "] ";
 		fwrite(warnTag.c_str(), 1, warnTag.size(), stdout);
 		return formatPrint(L);
 	}, "warn");

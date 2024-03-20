@@ -12,7 +12,9 @@
 
 #include <vector>
 
-std::vector<std::string> opList = {
+using namespace std;
+
+vector<string> opList = {
 	"NOP", "BREAK", "LOADNIL",
 	"LOADB", "LOADN", "LOADK",
 	"MOVE", "GETGLOBAL", "SETGLOBAL",
@@ -40,21 +42,21 @@ std::vector<std::string> opList = {
 	"JUMPXEQKS", "IDIV", "IDIVK"
 };
 
-std::vector<std::string> fiuProtoField = {
+vector<string> fiuProtoField = {
 	"maxstacksize", "numparams",
 	"nups", "isvararg", "linedefined",
 	"debugname", "sizecode", "sizek",
 	"sizep", "protos", "code"
 };
 
-std::vector<std::string> fiuCodeField = {
+vector<string> fiuCodeField = {
 	"opmode", "kmode", "aux",
 	"A", "B", "C", "D", "E",
 	"K", "K0", "K1","K2", "KN", "KC",
 	"usesAux"
 };
 
-void appendOptionalCode(lua_State* L, std::string& str)
+void appendOptionalCode(lua_State* L, string& str)
 {
 	if (lua_isnil(L, -1))
 		str.append(" ?");
@@ -87,9 +89,9 @@ int tableFind(lua_State* L)
 	return -1;
 }
 
-std::vector<std::string> splitString(const char* src, size_t srcLen, std::string split = " ")
+vector<string> splitString(const char* src, size_t srcLen, string split = " ")
 {
-	std::vector<std::string> ls = {};
+	vector<string> ls = {};
 	size_t splitLen = split.size();
 	if (srcLen == 0 || splitLen == 0)
 		return ls;
@@ -101,15 +103,15 @@ std::vector<std::string> splitString(const char* src, size_t srcLen, std::string
 	for (const char* iter = src; iter <= end - splitLen; iter++)
 		if (memcmp(iter, sep, splitLen) == 0)
 		{
-			ls.push_back(std::string(start, iter - start));
+			ls.push_back(string(start, iter - start));
 			start = iter + splitLen;
 		}
 	
-	ls.push_back(std::string(start, end - start));
+	ls.push_back(string(start, end - start));
 	return ls;
 }
 
-bool isBlank(std::string s)
+bool isBlank(string s)
 {
 	for (char c : s)
 		if (!isspace(c))
@@ -141,23 +143,23 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 	if (memcmp(src, "~", 1) == 0)
 	{
 		lua_newtable(L);
-		lua_pushunsigned(L, std::stoul(std::string(src + 1, srcLen - 1)));
+		lua_pushunsigned(L, stoul(string(src + 1, srcLen - 1)));
 		lua_setfield(L, -2, "value");
 		return;
 	}
 
-	std::vector<std::string> codeList = splitString(src, srcLen, " ");
+	vector<string> codeList = splitString(src, srcLen, " ");
 
 	lua_newtable(L);
 
-	int opcode = std::stoi(codeList.at(0));
+	int opcode = stoi(codeList.at(0));
 	lua_pushinteger(L, opcode);
 	lua_setfield(L, -2, "opcode");
 	int idx = 1;
 	int kmode = 0;
-	for (std::string& field : fiuCodeField)
+	for (string& field : fiuCodeField)
 	{
-		std::string s = codeList.at(idx);
+		string s = codeList.at(idx);
 		idx++;
 		if (s == "?")
 		{
@@ -175,7 +177,7 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 				lua_pushboolean(L, s == "1");
 			else
 			{
-				lua_rawgeti(L, constants, std::stoul(s));
+				lua_rawgeti(L, constants, stoul(s));
 				if (lua_isnil(L, -1))
 				{
 					lua_pushstring(L, uformat("Expected value in constants at index %s", s.c_str()).c_str());
@@ -183,7 +185,7 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 				}
 				if (lua_type(L, -1) == LUA_TSTRING)
 				{
-					int sidx = std::stoi(lua_tostring(L, -1));
+					int sidx = stoi(lua_tostring(L, -1));
 					lua_pushvalue(L, -2);
 					lua_rawgeti(L, stringList, sidx);
 					if (lua_isnil(L, -1))
@@ -199,27 +201,27 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 		}
 		else if (field == "kmode")
 		{
-			kmode = std::stoi(s);
+			kmode = stoi(s);
 			lua_pushinteger(L, kmode);
 		}
 		else if (field == "D")
 		{
-			int n = std::stoul(s);
+			int n = stoul(s);
 			lua_pushinteger(L, n);
 		}
 		else
 		{
-			lua_pushunsigned(L, std::stoul(s));
+			lua_pushunsigned(L, stoul(s));
 		}
 		lua_setfield(L, -2, field.c_str());
 	}
 
-	std::string opname = opList.at(opcode);
+	string opname = opList.at(opcode);
 	lua_pushstring(L, opname.c_str());
 	lua_setfield(L, -2, "name");
 }
 
-void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> protoCode)
+void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 {
 	luaL_checktype(L, -2, LUA_TTABLE); // StringList
 	luaL_checktype(L, -1, LUA_TTABLE); // Constants
@@ -227,11 +229,11 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 	int constants = lua_gettop(L);
 	int stringList = constants - 1;
 
-	std::vector<std::string> protoList = splitString(src.c_str(), src.size(), " ");
+	vector<string> protoList = splitString(src.c_str(), src.size(), " ");
 
 	lua_newtable(L);
 
-	int bytecodeid = std::stoi(protoList.at(0));
+	int bytecodeid = stoi(protoList.at(0));
 	lua_pushinteger(L, bytecodeid);
 	lua_setfield(L, -2, "bytecodeid");
 
@@ -239,9 +241,9 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 	lua_setfield(L, -2, "k");
 
 	int idx = 1;
-	for (std::string& field : fiuProtoField)
+	for (string& field : fiuProtoField)
 	{
-		std::string s = protoList.at(idx);
+		string s = protoList.at(idx);
 		idx++;
 		if (s == "?")
 			continue;
@@ -256,7 +258,7 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 			}
 			else if (field == "debugname")
 			{
-				lua_rawgeti(L, stringList, std::stoi(s));
+				lua_rawgeti(L, stringList, stoi(s));
 			}
 			else if (field == "protos")
 			{
@@ -264,12 +266,12 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 					lua_newtable(L); // empty table
 				else
 				{
-					std::vector<std::string> protoRefs = splitString(s.c_str() + 1, s.size() - 3, ",");
+					vector<string> protoRefs = splitString(s.c_str() + 1, s.size() - 3, ",");
 					lua_newtable(L);
 					int idx = 1;
-					for (std::string& k : protoRefs)
+					for (string& k : protoRefs)
 					{
-						lua_pushinteger(L, std::stoi(k));
+						lua_pushinteger(L, stoi(k));
 						lua_rawseti(L, -2, idx);
 						idx++;
 					}
@@ -279,7 +281,7 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 			{
 				lua_newtable(L);
 				int idx = 1;
-				for (std::string& k : protoCode)
+				for (string& k : protoCode)
 				{
 					lua_pushvalue(L, constants); // Constants
 					lua_pushvalue(L, stringList); // StringList
@@ -299,14 +301,14 @@ void fiuDecodeProto(lua_State* L, std::string src, std::vector<std::string> prot
 		}
 		else
 		{
-			int n = std::stoi(s);
+			int n = stoi(s);
 			lua_pushinteger(L, n);
 		}
 		lua_setfield(L, -2, field.c_str());
 	}
 }
 
-std::string fiuEncodeCode(lua_State* L)
+string fiuEncodeCode(lua_State* L)
 {
 	luaL_checktype(L, -2, LUA_TTABLE); // Code
 	luaL_checktype(L, -1, LUA_TTABLE); // Constants
@@ -314,7 +316,7 @@ std::string fiuEncodeCode(lua_State* L)
 	int constants = lua_gettop(L);
 	int code = constants - 1;
 
-	std::string encoded;
+	string encoded;
 
 	lua_getfield(L, code, "opcode");
 	if (lua_isnil(L, -1))
@@ -330,10 +332,10 @@ std::string fiuEncodeCode(lua_State* L)
 		lua_pop(L, 4);
 		return encoded;
 	}
-	encoded = std::string(lua_tostring(L, -1));
+	encoded = string(lua_tostring(L, -1));
 	lua_pop(L, 1);
 	int kmode = 1;
-	for (std::string& field : fiuCodeField)
+	for (string& field : fiuCodeField)
 	{
 		lua_getfield(L, code, field.c_str());
 		if (
@@ -377,14 +379,14 @@ std::string fiuEncodeCode(lua_State* L)
 	return encoded;
 }
 
-std::string fiuEncodeProto(lua_State* L, int compact = 0)
+string fiuEncodeProto(lua_State* L, int compact = 0)
 {
 	luaL_checktype(L, -2, LUA_TTABLE); // Proto
 	luaL_checktype(L, -1, LUA_TTABLE); // StringList
 	int proto = lua_gettop(L) - 1;
 	int stringList = lua_gettop(L);
 
-	std::string encoded;
+	string encoded;
 
 	lua_getfield(L, proto, "k");
 	if (lua_isnil(L, -1))
@@ -409,7 +411,7 @@ std::string fiuEncodeProto(lua_State* L, int compact = 0)
 	encoded.append(uformat("%d", lua_tointeger(L, -1)));
 	lua_pop(L, 1);
 
-	for (std::string& field : fiuProtoField)
+	for (string& field : fiuProtoField)
 	{
 		lua_getfield(L, proto, field.c_str());
 		if (lua_isnil(L, -1))
@@ -515,7 +517,7 @@ int fiuApiEncodeCode(lua_State* L)
 	luaL_checktype(L, 1, LUA_TTABLE); // Code
 	luaL_checktype(L, 2, LUA_TTABLE); // Constants
 	
-	std::string encoded = fiuEncodeCode(L);
+	string encoded = fiuEncodeCode(L);
 
 	lua_pushstring(L, encoded.c_str());
 
@@ -553,7 +555,7 @@ int fiuApiEncodeModule(lua_State* L)
 
 	lua_newtable(L);
 	int constantsList = lua_gettop(L);
-	std::string encoded;
+	string encoded;
 
 	encoded.append(uformat("%d; ", lua_tointeger(L, typesVersion)));
 	encoded.append(uformat("%d; ", index));
@@ -568,7 +570,7 @@ int fiuApiEncodeModule(lua_State* L)
 		int vt = lua_type(L, -1);
 		lua_pushvalue(L, -1); // proto
 		lua_pushvalue(L, stringList); // StringList
-		std::string encodedProto = fiuEncodeProto(L, 4);
+		string encodedProto = fiuEncodeProto(L, 4);
 		lua_pushvalue(L, -1); // Constants
 		lua_rawseti(L, constantsList, iter);
 
@@ -579,7 +581,7 @@ int fiuApiEncodeModule(lua_State* L)
 	
 	lua_pushstring(L, encoded.c_str());
 
-	std::string luaConstantsList = "{\n\t";
+	string luaConstantsList = "{\n\t";
 	lua_pushvalue(L, constantsList);
 	lua_pushnil(L);
 	int allocSize = 0;
@@ -656,7 +658,7 @@ int fiuApiEncodeModule(lua_State* L)
 	luaConstantsList.append("\n}");
 	lua_pop(L, 1);
 
-	std::string luaStringList = "{\n\t";
+	string luaStringList = "{\n\t";
 	lua_pushvalue(L, stringList);
 	lua_pushnil(L);
 	allocSize = 0;
@@ -675,7 +677,7 @@ int fiuApiEncodeModule(lua_State* L)
 		for (int i = 0; i < len; i++)
 		{
 			luaStringList.append("\\");
-			luaStringList.append(std::to_string((unsigned char)(s[1 + i - 1])));
+			luaStringList.append(to_string((unsigned char)(s[1 + i - 1])));
 		}
 		luaStringList.append("\",");
 		allocSize += len;
@@ -714,26 +716,26 @@ int fiuApiDecodeModule(lua_State* L)
 	size_t srcLen;
 	const char* src = luaL_checklstring(L, 1, &srcLen);
 
-	std::vector<std::string> moduleList;
+	vector<string> moduleList;
 	
-	for (std::string& k : splitString(src, srcLen, "\n"))
+	for (string& k : splitString(src, srcLen, "\n"))
 	{
-		std::vector<std::string> subList = splitString(k.c_str(), k.size(), ";");
+		vector<string> subList = splitString(k.c_str(), k.size(), ";");
 		moduleList.insert(moduleList.end(), subList.begin(), subList.end());
 	}
 
-	for (std::string& k : moduleList)
+	for (string& k : moduleList)
 	{
-		k = std::string(stripWhiteSpace(k.c_str(), nullptr));
+		k = string(stripWhiteSpace(k.c_str(), nullptr));
 	}
 	
 	moduleList.erase(
-		std::remove_if(moduleList.begin(), moduleList.end(), isBlank),
+		remove_if(moduleList.begin(), moduleList.end(), isBlank),
 		moduleList.end()
 	);
 	
-	int typesVersion = std::stoi(moduleList.at(0));
-	int mainProtoId = std::stoi(moduleList.at(1));
+	int typesVersion = stoi(moduleList.at(0));
+	int mainProtoId = stoi(moduleList.at(1));
 	moduleList.erase(moduleList.begin(), moduleList.begin() + 2);
 
 	lua_newtable(L);
@@ -744,9 +746,9 @@ int fiuApiDecodeModule(lua_State* L)
 	lua_newtable(L);
 	int idx = 1;
 	bool isProto = false;
-	std::string protoInfo;
-	std::vector<std::string> protoCode;
-	for (std::string& k : moduleList)
+	string protoInfo;
+	vector<string> protoCode;
+	for (string& k : moduleList)
 	{
 		const char* lastChar = k.c_str() + k.size() - 1;
 		if (isProto)
@@ -810,7 +812,7 @@ int fiuApiMakeCode(lua_State* L)
 	luaL_checktype(L, 2, LUA_TSTRING); // Constants
 	luaL_checktype(L, 3, LUA_TSTRING); // StringList
 
-	std::string code = "local encodedModule, constantList, stringList = [[\n";
+	string code = "local encodedModule, constantList, stringList = [[\n";
 	code.append(lua_tostring(L, 1));
 	code.append("]], ");
 	code.append(lua_tostring(L, 2));

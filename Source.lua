@@ -39,7 +39,7 @@ local ttistable = function(v) return type(v) == "table" end
 local ttisuserdata = function(v) return type(v) == "userdata" end
 local ttisfunction = function(v) return type(v) == "function" end
 
-local hastm = function(mt, e) return if ttistable(mt) then rawget(mt, e) ~= nil else false end
+local hastm = function(mt, e) return ttistable(mt) and rawget(mt, e) ~= nil or false end
 
 local TM_CALL = "__call"
 local TM_ITER = "__iter"
@@ -931,7 +931,7 @@ local function luau_load(module, env)
 
 					if not ttisfunction(iterator) then
 						local mt = getmetatable(iterator)
-						if not mt or not mt.__call then
+						if not hastm(mt, TM_CALL) then
 							local loopInstruction = code[pc + inst.D]
 							if generalized_iterators[loopInstruction] == nil then 
 								--// Thanks @bmcq-0 and @memcorrupt for the spoonfeed

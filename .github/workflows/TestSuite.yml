@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Submodules
+        run: git submodule update --init --recursive
+
+      - name: Make tests
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release ./tests
+          cmake --build . --target=fiu-tests
+      
+      - name: Run tests
+        run: |
+          ./fiu-tests

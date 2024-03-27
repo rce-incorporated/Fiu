@@ -508,7 +508,7 @@ local function luau_load(module, env, luau_settings)
 	
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
-			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
+			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, { __mode = "vs" }), setmetatable({}, { __mode = "kvs" })
 			local constants = proto.k
 			local extensions = luau_settings.extensions
 

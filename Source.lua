@@ -1,4 +1,4 @@
--- // Environment changes in the VM are not supposed to alter the behaviour of the VM so we localise them all beforehand
+-- // Environment changes in the VM are not supposed to alter the behaviour of the VM so we localise globals beforehand
 local type = type
 local pcall = pcall
 local error = error
@@ -33,8 +33,10 @@ local bit32_btest = bit32.btest
 local bit32_rshift = bit32.rshift
 local bit32_lshift = bit32.lshift
 local bit32_extract = bit32.extract
+local bit32_bnot = bit32.bnot
 
 local ttisnumber = function(v) return type(v) == "number" end
+local ttisstring = function(v) return type(v) == "string" end
 local ttisboolean = function(v) return type(v) == "boolean" end
 local ttisfunction = function(v) return type(v) == "function" end
 
@@ -155,7 +157,8 @@ local function luau_newsettings()
 		extensions = {},
 		callHooks = {},
 		errorHandling = true,
-		generalizedIteration = true
+		generalizedIteration = true,
+		allowProxyErrors = false,
 	}	
 end
 
@@ -416,14 +419,37 @@ local function luau_deserialize(bytecode, luau_settings)
 		local debugname = stringList[readVarInt()]
 
 		-- // lineinfo
-		if readByte() ~= 0 then
-			local lineGap = readByte()
-			for i = 1, sizecode do
-				readByte()
+		local lineinfoenabled = readByte() ~= 0
+		local instructionlineinfo = nil 
+		
+		if lineinfoenabled then
+			local linegaplog2 = readByte()
+			
+			local intervals = bit32_rshift((sizecode - 1), linegaplog2) + 1
+			local absoffset = bit32_band(sizecode + 3, bit32_bnot(3))
+			
+			local sizelineinfo = absoffset + intervals * 4; --// sizeof(int)
+			
+			local lineinfo = {}
+			local abslineinfo = {} 
+
+			local lastoffset = 0
+			for j = 1, sizecode do
+				lastoffset = lastoffset + readByte()
+				table_insert(lineinfo, lastoffset)
 			end
-			local intervals = bit32_rshift(sizecode - 1, lineGap) + 1
-			for i = 1, intervals do
-				readWord()
+
+			local lastline = 0
+			for j = 1, intervals do
+				lastline = lastline + readWord()
+				table_insert(abslineinfo, lastline)
+			end
+			
+			instructionlineinfo = {}
+			
+			for i = 1, sizecode do 
+				--// p->abslineinfo[pc >> p->linegaplog2] + p->lineinfo[pc];
+				instructionlineinfo[i] = abslineinfo[bit32_rshift(i, linegaplog2) + 1] + lineinfo[i]
 			end
 		end
 
@@ -458,6 +484,9 @@ local function luau_deserialize(bytecode, luau_settings)
 
 			sizep = sizep;
 			protos = protolist;
+			
+			lineinfoenabled = lineinfoenabled;
+			instructionlineinfo = instructionlineinfo;
 
 			bytecodeid = bytecodeid;
 		}
@@ -497,18 +526,18 @@ local function luau_load(module, env, luau_settings)
 
 	local protolist = module.protoList
 	local mainProto = module.mainProto
-	
+
 	local breakHook = luau_settings.callHooks.breakHook
 	local stepHook = luau_settings.callHooks.stepHook
 	local interruptHook = luau_settings.callHooks.interruptHook
 	local panicHook = luau_settings.callHooks.panicHook
-	
+
 	local alive = true 
-	
+
 	local function luau_close()
 		alive = false
 	end
-	
+
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "kvs"})
@@ -518,17 +547,17 @@ local function luau_load(module, env, luau_settings)
 			while alive do
 				local inst = code[pc]
 				local op = inst.opcode
-				
+
 				debugging.pc = pc
 				debugging.top = top
 				debugging.name = inst.opname
 
 				pc += 1
-				
+
 				if stepHook then
 					stepHook(stack, debugging, proto, module, upvals)
 				end
-				
+
 				if op == 0 then --[[ NOP ]]
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
@@ -678,14 +707,14 @@ local function luau_load(module, env, luau_settings)
 							if interruptHook then
 								interruptHook(stack, debugging, proto, module, upvals)	
 							end
-							
+
 							pc += 1 --// Skip next CALL instruction
 
 							inst = callInst
 							op = callOp
 							debugging.pc = pc
 							debugging.name = inst.opname
-							
+
 							if stepHook then
 								stepHook(stack, debugging, proto, module, upvals)
 							end
@@ -707,7 +736,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
@@ -729,7 +758,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					local A = inst.A
 					local B = inst.B 
 					local b = B - 1
@@ -748,7 +777,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					pc += inst.D
 				elseif op == 25 then --[[ JUMPIF ]]
 					if stack[inst.A] then
@@ -933,7 +962,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					local A = inst.A
 					local limit = stack[A]
 					local step = stack[A + 1]
@@ -954,7 +983,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					local A = inst.A
 					local res = inst.K
 
@@ -1046,7 +1075,7 @@ local function luau_load(module, env, luau_settings)
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
-					
+
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
@@ -1130,14 +1159,14 @@ local function luau_load(module, env, luau_settings)
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
 			end
-			
+
 			for i, uv in open_upvalues do
 				uv.value = uv.store[uv.index]
 				uv.store = uv
 				uv.index = "value" --// self reference
 				open_upvalues[i] = nil
 			end
-			
+
 			for i, iter in generalized_iterators do 
 				coroutine_close(iter)
 				generalized_iterators[i] = nil
@@ -1174,11 +1203,25 @@ local function luau_load(module, env, luau_settings)
 			if result[1] then
 				return table_unpack(result, 2, result.n)
 			else
+				local message = result[2]
+				
 				if panicHook then
-					panicHook(result[2], stack, debugging, proto, module, upvals)
+					panicHook(message, stack, debugging, proto, module, upvals)
 				end
 				
-				return error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s", debugging.pc, debugging.name, result[2]), 0)
+				if ttisstring(message) == false then
+					if luau_settings.allowProxyErrors then
+						error(message)
+					else 
+						message = type(message)
+					end
+				end
+				
+				if proto.lineinfoenabled then
+					return error(string_format("Fiu VM Error {PC: %s Opcode: %s Line: %s}: %s", debugging.pc, debugging.name, proto.instructionlineinfo[debugging.pc], message), 0)
+				else 
+					return error(string_format("Fiu VM Error {PC: %s Opcode: %s}: %s", debugging.pc, debugging.name, message), 0)
+				end
 			end
 		end
 

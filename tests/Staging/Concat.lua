@@ -5,6 +5,6 @@ a = a .. " "
 a = a .. "Wo"
 a = a .. "rld"
 
-print(a)
+assert(a == "Hello World")
 
 OK()

@@ -65,10 +65,27 @@ end
 
 The Luau VM provides simple hooks to see into the VM at certain points, the Fiu VM emulates 4 of these callbacks. 
 
-`breakHook` - When a `LOP_BREAK`/breakpoint is encountered `breakHook` will be called  
-`interruptHook` - When a vm interrupt occurs the `interruptHook` will be called  
-`panicHook` - When an unprotected error occurs within the VM the `panicHook` will be called if `errorHandling` is enabled  
-`stepHook` - When a VM step (In Fiu, when the PC increases) occurs `stepHook` will be called  
+`breakHook(stack, debugging, proto, module, upvals)` - When a `LOP_BREAK`/breakpoint is encountered `breakHook` will be called  
+`interruptHook(stack, debugging, proto, module, upvals)` - When a vm interrupt occurs the `interruptHook` will be called  
+`panicHook(message, stack, debugging, proto, module, upvals)` - When an unprotected error occurs within the VM the `panicHook` will be called if `errorHandling` is enabled  
+`stepHook(stack, debugging, proto, module, upvals)` - When a VM step (In Fiu, when the PC increases) occurs `stepHook` will be called  
+
+Example:
+
+```lua
+settings.callHooks.stepHook = function(stack, debugging)
+	print('step occured', debugging.name, debugging.pc)	
+end
+settings.callHooks.panicHook = function(message, stack, debugging)
+	print(debugging.name, message)
+	for i,v in stack do 
+		print(i,v)
+	end
+end
+settings.callHooks.interruptHook = function(stack, debugging)
+	print(debugging.name, "interrupted!")
+end
+```
  
 # Contributing
 

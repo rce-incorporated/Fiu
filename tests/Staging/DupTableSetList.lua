@@ -8,6 +8,10 @@ local c = {
 	a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a
 }
 
-print(a,c,#a,#c)
+assert(a.a == 1)
+assert(a.b == 2)
+assert(a.c == 3)
+assert(#a == 0)
+assert(#c == 44)
 
 OK()

@@ -145,6 +145,8 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 		lua_newtable(L);
 		lua_pushunsigned(L, stoul(string(src + 1, srcLen - 1)));
 		lua_setfield(L, -2, "value");
+		lua_pushstring(L, "auxvalue");
+		lua_setfield(L, -2, "opname");
 		return;
 	}
 
@@ -218,7 +220,7 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 
 	string opname = opList.at(opcode);
 	lua_pushstring(L, opname.c_str());
-	lua_setfield(L, -2, "name");
+	lua_setfield(L, -2, "opname");
 }
 
 void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)

@@ -32,8 +32,10 @@ bool DEBUG_LUAU_ENABLE_PRINT = false;
 bool DEBUG_LUAU_ENABLE_WARN = false;
 
 FIU_EXPORT {
-	{"luau_load", "function"},
-	{"luau_deserialize", "function"}
+	{"luau_newsettings", "function"},
+	{"luau_validatesettings", "function"},
+	{"luau_deserialize", "function"},
+	{"luau_load", "function"}
 };
 
 FIU_TESTCASES {

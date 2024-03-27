@@ -450,11 +450,20 @@ TestResult RUN_TEST(string testName, string fileName)
 					if (deserialize != 0)
 						return deserialize;
 
-					lua_getfield(L, -2, "luau_load");
-					lua_pushvalue(L, -2);
-					lua_pushvalue(L, LUA_GLOBALSINDEX);
+					lua_getfield(L, -2, "luau_newsettings");
+					int newsettings = lua_pcall(L, 0, 1, 0);
+					if (newsettings != 0)
+						return newsettings;
 
-					int load = lua_pcall(L, 2, 1, 0);
+					lua_pushboolean(L, false);
+					lua_setfield(L, -2, "errorHandling");
+					
+					lua_getfield(L, -3, "luau_load");
+					lua_pushvalue(L, -3);
+					lua_pushvalue(L, LUA_GLOBALSINDEX);
+					lua_pushvalue(L, -4);
+
+					int load = lua_pcall(L, 3, 1, 0);
 					if (load != 0)
 						return load;
 
@@ -692,6 +701,8 @@ int main(int argc, char* argv[])
 
 		lua_close(L);
 	}
+
+	printf("\n");
 
 	if (strcmp(mode, "mdt") == 0)
 	{

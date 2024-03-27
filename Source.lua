@@ -689,13 +689,15 @@ local function luau_load(module, env, luau_settings)
 					local B = inst.B
 
 					local kv = inst.K
+					
 					local sb = stack[B]
 
 					stack[A + 1] = sb
-					stack[A] = sb[kv]
-
+					
 					pc += 1 --// adjust for aux 
-
+					
+					local useFallback = true
+					
 					--// Special handling for native namecall behaviour
 					local useNativeHandler = luau_settings.useNativeNamecall
 
@@ -714,6 +716,8 @@ local function luau_load(module, env, luau_settings)
 						)
 
 						if ret_list[1] == true then
+							useFallback = false
+							
 							if interruptHook then
 								interruptHook(stack, debugging, proto, module, upvals)	
 							end
@@ -741,6 +745,10 @@ local function luau_load(module, env, luau_settings)
 
 							table_move(ret_list, 1, ret_num, callA, stack)
 						end
+					end
+					
+					if useFallback then
+						stack[A] = sb[kv]
 					end
 				elseif op == 21 then --[[ CALL ]]
 					if interruptHook then

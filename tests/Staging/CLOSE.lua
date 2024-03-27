@@ -1,10 +1,10 @@
 local functions = {}
 for i = 1, 10 do
     functions[i] = function()
-        print(i)
+        return i
     end
 end
-functions[2]()
-functions[9]()
+assert(functions[2]() == 2)
+assert(functions[9]() == 9)
 
 OK()

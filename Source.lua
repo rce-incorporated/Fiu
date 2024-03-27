@@ -34,7 +34,6 @@ local bit32_extract = bit32.extract
 
 local ttisnumber = function(v) return type(v) == "number" end
 local ttisboolean = function(v) return type(v) == "boolean" end
-local ttisstring = function(v) return type(v) == "string" end
 local ttisfunction = function(v) return type(v) == "function" end
 
 -- // opList contains information about the instruction, each instruction is defined in this format:
@@ -638,11 +637,11 @@ local function luau_load(module, env, luau_settings)
 						local callOp = callInst.opcode
 						
 						--// Copied from the CALL handler under
-						local A, B, C = callInst.A, callInst.B, callInst.C
+						local callA, callB, callC = callInst.A, callInst.B, callInst.C
 
-						local params = if B == 0 then top - A else B - 1
+						local params = if callB == 0 then top - callA else callB - 1
 						local ret_list = table_pack(
-							nativeNamecall(kv, table_unpack(stack, A + 1, A + params))
+							nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params))
 						)
 						
 						if ret_list[1] == true then
@@ -657,13 +656,13 @@ local function luau_load(module, env, luau_settings)
 						
 							local ret_num = ret_list.n - 1
 
-							if C == 0 then
-								top = A + ret_num - 1
+							if callC == 0 then
+								top = callA + ret_num - 1
 							else
-								ret_num = C - 1
+								ret_num = callC - 1
 							end
 
-							table_move(ret_list, 1, ret_num, A, stack)
+							table_move(ret_list, 1, ret_num, callA, stack)
 						end
 					end
 				elseif op == 21 then --[[ CALL ]]

@@ -430,8 +430,8 @@ local function luau_deserialize(bytecode, luau_settings)
 			
 			local sizelineinfo = absoffset + intervals * 4; --// sizeof(int)
 			
-			local lineinfo = {}
-			local abslineinfo = {} 
+			local lineinfo = table_create(sizecode)
+			local abslineinfo = table_create(intervals)
 
 			local lastoffset = 0
 			for j = 1, sizecode do

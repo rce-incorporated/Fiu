@@ -26,7 +26,7 @@ Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top
 
 **Contributors**
 
-[TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/)
-[Rerumu](https://github.com/Rerumu/)
-[Green](https://github.com/green-real/)
-[SnorlaxAssist](https://github.com/Snorlaxassist)
+[TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/)  
+[Rerumu](https://github.com/Rerumu/)  
+[Green](https://github.com/green-real/)  
+[SnorlaxAssist](https://github.com/Snorlaxassist)  

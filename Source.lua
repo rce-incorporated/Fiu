@@ -1008,7 +1008,7 @@ local function luau_load(module, env, luau_settings)
 				elseif op == 76 then --[[ FORGPREP ]]
 					local iterator = stack[inst.A]
 
-					if (luau_settings.generalizedIteration == true) and not ttisfunction(iterator) then
+					if luau_settings.generalizedIteration and not ttisfunction(iterator) then
 						local loopInstruction = code[pc + inst.D]
 						if generalized_iterators[loopInstruction] == nil then 
 							local function gen_iterator(...)

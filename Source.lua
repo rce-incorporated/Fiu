@@ -416,8 +416,16 @@ local function luau_deserialize(bytecode, luau_settings)
 		end
 
 		local linedefined = readVarInt()
-		local debugname = stringList[readVarInt()]
-
+				
+		local debugnameindex = readVarInt()
+		local debugname 
+		
+		if debugnameindex == 0 then
+			debugname = stringList[debugnameindex]
+		else 
+			debugname = "(??)"
+		end
+		
 		-- // lineinfo
 		local lineinfoenabled = readByte() ~= 0
 		local instructionlineinfo = nil 
@@ -467,7 +475,7 @@ local function luau_deserialize(bytecode, luau_settings)
 				readVarInt()
 			end
 		end
-
+		
 		return {
 			maxstacksize = maxstacksize;
 			numparams = numparams;
@@ -502,7 +510,9 @@ local function luau_deserialize(bytecode, luau_settings)
 	local mainProto = protoList[readVarInt() + 1]
 
 	assert(cursor == #bytecode, "deserializer cursor position mismatch")
-
+	
+	mainProto.debugname = "(main)"
+	
 	return {
 		stringList = stringList;
 		protoList = protoList;
@@ -1218,9 +1228,9 @@ local function luau_load(module, env, luau_settings)
 				end
 				
 				if proto.lineinfoenabled then
-					return error(string_format("Fiu VM Error {PC: %s Opcode: %s Line: %s}: %s", debugging.pc, debugging.name, proto.instructionlineinfo[debugging.pc], message), 0)
+					return error(string_format("Fiu VM Error {Name: %s PC: %s Opcode: %s Line: %s}: %s", proto.debugname, debugging.pc, debugging.name, proto.instructionlineinfo[debugging.pc], message), 0)
 				else 
-					return error(string_format("Fiu VM Error {PC: %s Opcode: %s}: %s", debugging.pc, debugging.name, message), 0)
+					return error(string_format("Fiu VM Error {Name: %s PC: %s Opcode: %s}: %s", proto.debugname, debugging.pc, debugging.name, message), 0)
 				end
 			end
 		end

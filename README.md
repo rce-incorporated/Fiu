@@ -43,11 +43,13 @@ luau_settings.namecallHandler = function(namecallMethod, self, ...)
 end
 ```
 
-### Stack frame and running thread
+### Stack frame, running thread and errors
 
 The interpreter can be accurate 1:1 to existing stack frames if `errorHandling` is disabled. 
 
 Generalized iteration can also cause issues because it requires a new thread to be created so anything that gets iterated will go deeper in the C stack depth limit and `__iter` and `__call` will have a different thread when `coroutine.running` is called. If generialized iteration is disabled with `generializedIteration` `__call` will still function but `__iter` and iterating over tables without an iterator will no longer work.
+
+Fiu cannot provide perfect errors, if `errorHandling` is enabled all errors are processed by Fiu and will be turned into strings if they are not. If you want to be able to error a table and then grab the table enable `allowProxyErrors` which will error the errored object again. Note that when `errorHandling` is disabled this behaviour is done by default because Fiu will not interfere with errors. 
 
 ### Injectable globals
 

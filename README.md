@@ -24,4 +24,9 @@ Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top
 
 <div>Luau updates often and Fiu will need to be updated and have working releases added for every new version.</div>
 
-<br>Written by [TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/), [Green](https://github.com/green-real/) and [Rerumu](https://github.com/Rerumu/)
+**Contributors**
+
+[TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/)
+[Rerumu](https://github.com/Rerumu/)
+[Green](https://github.com/green-real/)
+[SnorlaxAssist](https://github.com/Snorlaxassist)

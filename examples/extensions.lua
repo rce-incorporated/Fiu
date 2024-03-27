@@ -1,3 +1,5 @@
+--[[ Source: macro() ]]
+
 local luau_settings = Fiu.luau_newsettings()
 
 luau_settings.extensions["macro"] = function()

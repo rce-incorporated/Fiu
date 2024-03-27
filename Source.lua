@@ -416,45 +416,45 @@ local function luau_deserialize(bytecode, luau_settings)
 		end
 
 		local linedefined = readVarInt()
-				
+
 		local debugnameindex = readVarInt()
 		local debugname 
-		
+
 		if debugnameindex == 0 then
 			debugname = stringList[debugnameindex]
 		else 
 			debugname = "(??)"
 		end
-		
+
 		-- // lineinfo
 		local lineinfoenabled = readByte() ~= 0
 		local instructionlineinfo = nil 
-		
+
 		if lineinfoenabled then
 			local linegaplog2 = readByte()
-			
+
 			local intervals = bit32_rshift((sizecode - 1), linegaplog2) + 1
 			local absoffset = bit32_band(sizecode + 3, bit32_bnot(3))
-			
+
 			local sizelineinfo = absoffset + intervals * 4; --// sizeof(int)
-			
+
 			local lineinfo = table_create(sizecode)
 			local abslineinfo = table_create(intervals)
 
 			local lastoffset = 0
 			for j = 1, sizecode do
-				lastoffset = lastoffset + readByte()
-				table_insert(lineinfo, lastoffset)
+				lastoffset += readByte()
+				lineinfo[j] = lastoffset
 			end
 
 			local lastline = 0
 			for j = 1, intervals do
-				lastline = lastline + readWord()
-				table_insert(abslineinfo, lastline)
+				lastline += readWord()
+				abslineinfo[j] = lastline
 			end
-			
+
 			instructionlineinfo = table_create(sizecode)
-			
+
 			for i = 1, sizecode do 
 				--// p->abslineinfo[pc >> p->linegaplog2] + p->lineinfo[pc];
 				table_insert(instructionlineinfo, abslineinfo[bit32_rshift(i, linegaplog2) + 1] + lineinfo[i])
@@ -475,7 +475,7 @@ local function luau_deserialize(bytecode, luau_settings)
 				readVarInt()
 			end
 		end
-		
+
 		return {
 			maxstacksize = maxstacksize;
 			numparams = numparams;
@@ -492,7 +492,7 @@ local function luau_deserialize(bytecode, luau_settings)
 
 			sizep = sizep;
 			protos = protolist;
-			
+
 			lineinfoenabled = lineinfoenabled;
 			instructionlineinfo = instructionlineinfo;
 
@@ -510,9 +510,9 @@ local function luau_deserialize(bytecode, luau_settings)
 	local mainProto = protoList[readVarInt() + 1]
 
 	assert(cursor == #bytecode, "deserializer cursor position mismatch")
-	
+
 	mainProto.debugname = "(main)"
-	
+
 	return {
 		stringList = stringList;
 		protoList = protoList;
@@ -1214,11 +1214,11 @@ local function luau_load(module, env, luau_settings)
 				return table_unpack(result, 2, result.n)
 			else
 				local message = result[2]
-				
+
 				if panicHook then
 					panicHook(message, stack, debugging, proto, module, upvals)
 				end
-				
+
 				if ttisstring(message) == false then
 					if luau_settings.allowProxyErrors then
 						error(message)
@@ -1226,11 +1226,11 @@ local function luau_load(module, env, luau_settings)
 						message = type(message)
 					end
 				end
-				
+
 				if proto.lineinfoenabled then
-					return error(string_format("Fiu VM Error {Name: %s PC: %s Opcode: %s Line: %s}: %s", proto.debugname, debugging.pc, debugging.name, proto.instructionlineinfo[debugging.pc], message), 0)
+					return error(string_format("Fiu VM Error { Name: %s Line: %s PC: %s Opcode: %s }: %s", proto.debugname, proto.instructionlineinfo[debugging.pc], debugging.pc, debugging.name, message), 0)
 				else 
-					return error(string_format("Fiu VM Error {Name: %s PC: %s Opcode: %s}: %s", proto.debugname, debugging.pc, debugging.name, message), 0)
+					return error(string_format("Fiu VM Error { Name: %s PC: %s Opcode: %s }: %s", proto.debugname, debugging.pc, debugging.name, message), 0)
 				end
 			end
 		end

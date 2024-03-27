@@ -53,7 +53,7 @@ Fiu cannot provide perfect errors, if `errorHandling` is enabled all errors are 
 
 ### Injectable globals
 
-The vm allows globals to be injected into the VM with `extensions`
+The vm allows globals to be injected into the VM with `extensions`, these injected globals can never be deleted by the interpreter and any attempts will just result in environment globals being set to `nil`. 
 
 Example:
 

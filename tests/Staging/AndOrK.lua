@@ -1,6 +1,6 @@
 local a = table.isfrozen({}) -- no propagate pls >:c
 
-print(a and "Hello World")
-print(a or "Goodbye World")
+assert(not (a and "Hello World"))
+assert((a or "Goodbye World") == "Goodbye World")
 
 OK()

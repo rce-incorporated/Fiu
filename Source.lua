@@ -3,7 +3,8 @@ local type = type
 local pcall = pcall
 local error = error
 local tonumber = tonumber
-local assert =assert
+local assert = assert
+local setmetatable = setmetatable
 
 local string_format = string.format
 
@@ -510,7 +511,7 @@ local function luau_load(module, env, luau_settings)
 	
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
-			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
+			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "kvs"})
 			local constants = proto.k
 			local extensions = luau_settings.extensions
 
@@ -1159,6 +1160,8 @@ local function luau_load(module, env, luau_settings)
 				varargs.len = len
 				table_move(passed, start, start + len - 1, 1, varargs.list)
 			end
+
+			passed = nil
 
 			local debugging = {pc = 0, name = "NONE"}
 			local result

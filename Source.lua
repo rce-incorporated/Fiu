@@ -17,6 +17,7 @@ local table_remove = table.remove
 local coroutine_create = coroutine.create
 local coroutine_yield = coroutine.yield
 local coroutine_resume = coroutine.resume
+local coroutine_close = coroutine.close
 
 local buffer_fromstring = buffer.fromstring
 local buffer_readu8 = buffer.readu8
@@ -499,13 +500,19 @@ local function luau_load(module, env, luau_settings)
 	local interruptHook = luau_settings.callHooks.interruptHook
 	local panicHook = luau_settings.callHooks.panicHook
 	
+	local alive = true 
+	
+	local function luau_close()
+		alive = false
+	end
+	
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
 			local constants = proto.k
 			local extensions = luau_settings.extensions
 
-			while true do
+			while alive do
 				local inst = code[pc]
 				local op = inst.opcode
 				
@@ -1121,6 +1128,18 @@ local function luau_load(module, env, luau_settings)
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
 			end
+			
+			for i, uv in open_upvalues do
+				uv.value = uv.store[uv.index]
+				uv.store = uv
+				uv.index = "value" --// self reference
+				open_upvalues[i] = nil
+			end
+			
+			for i, iter in generalized_iterators do 
+				coroutine_close(iter)
+				generalized_iterators[i] = nil
+			end
 		end
 
 		local function wrapped(...)
@@ -1162,7 +1181,7 @@ local function luau_load(module, env, luau_settings)
 		return wrapped
 	end
 
-	return luau_wrapclosure(module, mainProto)
+	return luau_wrapclosure(module, mainProto),  luau_close
 end
 
 return {

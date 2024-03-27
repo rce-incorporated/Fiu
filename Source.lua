@@ -493,7 +493,12 @@ local function luau_load(module, env, luau_settings)
 
 	local protolist = module.protoList
 	local mainProto = module.mainProto
-
+	
+	local breakHook = luau_settings.callHooks.breakHook
+	local stepHook = luau_settings.callHooks.stepHook
+	local interruptHook = luau_settings.callHooks.interruptHook
+	local panicHook = luau_settings.callHooks.panicHook
+	
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, {}, {}
@@ -503,12 +508,26 @@ local function luau_load(module, env, luau_settings)
 			while true do
 				local inst = code[pc]
 				local op = inst.opcode
+				
 				debugging.pc = pc
+				debugging.top = top
 				debugging.name = inst.opname
 
 				pc += 1
-
-				if op == 2 then --[[ LOADNIL ]]
+				
+				if stepHook then
+					stepHook(stack, debugging, proto, module, upvals)
+				end
+				
+				if op == 0 then --[[ NOP ]]
+					--// Do nothing
+				elseif op == 1 then --[[ BREAK ]]
+					if breakHook then
+						breakHook(stack, debugging, proto, module, upvals)
+					else
+						error("Breakpoint encountered without a break hook")
+					end
+				elseif op == 2 then --[[ LOADNIL ]]
 					stack[inst.A] = nil
 				elseif op == 3 then --[[ LOADB ]]
 					stack[inst.A] = inst.B == 1
@@ -646,12 +665,20 @@ local function luau_load(module, env, luau_settings)
 						)
 
 						if ret_list[1] == true then
+							if interruptHook then
+								interruptHook(stack, debugging, proto, module, upvals)	
+							end
+							
 							pc += 1 --// Skip next CALL instruction
 
 							inst = callInst
 							op = callOp
 							debugging.pc = pc
 							debugging.name = inst.opname
+							
+							if stepHook then
+								stepHook(stack, debugging, proto, module, upvals)
+							end
 
 							table_remove(ret_list, 1)
 
@@ -667,6 +694,10 @@ local function luau_load(module, env, luau_settings)
 						end
 					end
 				elseif op == 21 then --[[ CALL ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
@@ -685,6 +716,10 @@ local function luau_load(module, env, luau_settings)
 
 					table_move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					local A = inst.A
 					local B = inst.B 
 					local b = B - 1
@@ -700,6 +735,10 @@ local function luau_load(module, env, luau_settings)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					pc += inst.D
 				elseif op == 25 then --[[ JUMPIF ]]
 					if stack[inst.A] then
@@ -881,6 +920,10 @@ local function luau_load(module, env, luau_settings)
 						end
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					local A = inst.A
 					local limit = stack[A]
 					local step = stack[A + 1]
@@ -898,6 +941,10 @@ local function luau_load(module, env, luau_settings)
 						end
 					end
 				elseif op == 58 then --[[ FORGLOOP ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					local A = inst.A
 					local aux = inst.aux
 					local res = bit32_band(aux, 0xf);
@@ -987,6 +1034,10 @@ local function luau_load(module, env, luau_settings)
 
 					pc += 1 --// adjust for aux 
 				elseif op == 67 then --[[ JUMPX ]]
+					if interruptHook then
+						interruptHook(stack, debugging, proto, module, upvals)	
+					end
+					
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
@@ -1100,7 +1151,11 @@ local function luau_load(module, env, luau_settings)
 			if result[1] then
 				return table_unpack(result, 2, result.n)
 			else
-				return error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
+				if panicHook then
+					panicHook(result[2], stack, debugging, proto, module, upvals)
+				end
+				
+				return error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s", debugging.pc, debugging.name, result[2]), 0)
 			end
 		end
 

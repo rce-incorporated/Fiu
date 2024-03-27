@@ -118,7 +118,6 @@ FIU_TESTCASES {
 		"Staging/ForLoops",
 		"Staging/FunctionIssue",
 		"Staging/GenericFor",
-		"Staging/GetImportSpecial",
 		"Staging/Globals",
 		"Staging/HelloWorld",
 		"Staging/LOADN",

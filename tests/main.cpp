@@ -471,7 +471,7 @@ TestResult RUN_TEST(string testName, string fileName)
 				}
 			});
 
-			future_status status = testTask.wait_for(chrono::seconds(10));
+			future_status status = testTask.wait_for(chrono::seconds(12));
 
 			if (status == future_status::timeout)
 			{

@@ -115,7 +115,7 @@ local opList = {
 	{ "SETLIST", 3, 0, true },
 	{ "FORNPREP", 4, 0, false },
 	{ "FORNLOOP", 4, 0, false },
-	{ "FORGLOOP", 4, 0, true },
+	{ "FORGLOOP", 4, 8, true },
 	{ "FORGPREP_INEXT", 4, 0, false },
 	{ "DEP_FORGLOOP_INEXT", 0, 0, false },
 	{ "FORGPREP_NEXT", 4, 0, false },
@@ -330,6 +330,8 @@ local function luau_deserialize(bytecode, luau_settings)
 			inst.KN = bit32_extract(inst.aux, 31, 1) == 1
 		elseif kmode == 7 then --// B
 			inst.K = k[inst.B + 1]
+		elseif kmode == 8 then --// AUX number low 16 bits
+			inst.K = bit32_band(inst.aux, 0xf)
 		end
 	end
 
@@ -953,8 +955,7 @@ local function luau_load(module, env, luau_settings)
 					end
 					
 					local A = inst.A
-					local aux = inst.aux
-					local res = bit32_band(aux, 0xf);
+					local res = inst.K
 
 					top = A + 6
 

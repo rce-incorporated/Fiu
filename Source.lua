@@ -445,11 +445,11 @@ local function luau_deserialize(bytecode, luau_settings)
 				table_insert(abslineinfo, lastline)
 			end
 			
-			instructionlineinfo = {}
+			instructionlineinfo = table_create(sizecode)
 			
 			for i = 1, sizecode do 
 				--// p->abslineinfo[pc >> p->linegaplog2] + p->lineinfo[pc];
-				instructionlineinfo[i] = abslineinfo[bit32_rshift(i, linegaplog2) + 1] + lineinfo[i]
+				table_insert(instructionlineinfo, abslineinfo[bit32_rshift(i, linegaplog2) + 1] + lineinfo[i])
 			end
 		end
 

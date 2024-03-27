@@ -153,7 +153,7 @@ local function luau_newsettings()
 		namecallHandler = function() error("Native __namecall handler was not provided") end,
 		extensions = {},
 		callHooks = {},
-		debugging = false
+		errorHandling = false
 	}	
 end
 
@@ -165,7 +165,7 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.namecallHandler) == "function", "luau_settings.namecallHandler should be a function")
 	assert(type(luau_settings.extensions) == "table", "luau_settings.extensions should be a table of functions")
 	assert(type(luau_settings.callHooks) == "table", "luau_settings.callHooks should be a table of functions")
-	assert(type(luau_settings.debugging) == "boolean", "luau_settings.debugging should be a boolean")
+	assert(type(luau_settings.errorHandling) == "boolean", "luau_settings.errorHandling should be a boolean")
 end
 
 local function luau_deserialize(bytecode, luau_settings)
@@ -1091,10 +1091,10 @@ local function luau_load(module, env, luau_settings)
 
 			local debugging = {pc = 0, name = "NONE"}
 			local result
-			if luau_settings.debugging then 
-				result = table_pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
-			else
+			if luau_settings.errorHandling then 
 				result = table_pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
+			else
+				result = table_pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
 			end
 
 			if result[1] then

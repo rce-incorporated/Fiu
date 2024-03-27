@@ -7,7 +7,7 @@ Fiu does not taint the environment if you pass a table of functions or a wrapper
 # Usage
 Use `Source.lua` from the repository and set `FIU_DEBUGGING` to false at the top of the file.
 
-- `luau_load(bytecode | chunk, env, settings?)` <div>Used to deserialise and interpret code at the same time, bytecode that has already been deserialised can also be passed.</div>
+- `luau_load(module | bytecode, env, settings?)` <div>Accepts a luau module or bytecode. Returns the main prototype wrapped and a `luau_close` function to kill the interpreter if needed.</div>
 - `luau_deserialize(bytecode, settings?)` <div>Used to deserialise bytecode.</div>
 - `luau_newsettings()` <div>Used to create a table of default settings.</div>
 - `luau_validatesettings(settings)` <div>Used to validate the passed settings.</div>

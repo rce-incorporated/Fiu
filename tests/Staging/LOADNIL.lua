@@ -1,5 +1,5 @@
 local a = 1
 a = nil
-print(a)
+assert(not a)
 
 OK()

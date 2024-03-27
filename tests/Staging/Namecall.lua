@@ -1,4 +1,4 @@
-local t = {test = function(i) print(i) end}
+local t = {test = function(i) assert(i) end}
 t:test()
 
 OK()

@@ -152,7 +152,8 @@ local function luau_newsettings()
 		namecallHandler = function() error("Native __namecall handler was not provided") end,
 		extensions = {},
 		callHooks = {},
-		errorHandling = false
+		errorHandling = true,
+		generalizedIteration = true
 	}	
 end
 
@@ -173,7 +174,7 @@ local function luau_deserialize(bytecode, luau_settings)
 	else 
 		luau_validatesettings(luau_settings)
 	end
-	
+
 	local stream = buffer_fromstring(bytecode)
 	local cursor = 0
 
@@ -188,13 +189,13 @@ local function luau_deserialize(bytecode, luau_settings)
 		cursor = cursor + 4
 		return word
 	end
-	
+
 	local function readFloat()
 		local float = buffer_readf32(stream, cursor)
 		cursor = cursor + 4
 		return float
 	end
-	
+
 	local function readDouble()
 		local double = buffer_readf64(stream, cursor)
 		cursor = cursor + 8
@@ -384,7 +385,7 @@ local function luau_deserialize(bytecode, luau_settings)
 				k = readVarInt()
 			elseif kt == 7 then --// Vector
 				local x,y,z,w = readFloat(), readFloat(), readFloat(), readFloat()
-				
+
 				if luau_settings.vectorSize == 4 then
 					k = luau_settings.vectorCtor(x,y,z,w)
 				else 
@@ -485,11 +486,11 @@ local function luau_load(module, env, luau_settings)
 	else 
 		luau_validatesettings(luau_settings)
 	end
-	
+
 	if type(module) == "string" then
 		module = luau_deserialize(module, luau_settings)
 	end
-	
+
 	local protolist = module.protoList
 	local mainProto = module.mainProto
 
@@ -520,7 +521,7 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = stack[inst.B]
 				elseif op == 7 then --[[ GETGLOBAL ]]
 					local kv = inst.K
-					
+
 					stack[inst.A] = extensions[kv] or env[kv]
 
 					pc += 1 --// adjust for aux
@@ -548,7 +549,7 @@ local function luau_load(module, env, luau_settings)
 					local count = inst.KC
 					local k0 = inst.K0
 					local import = extensions[k0] or env[k0]
-					
+
 					if count == 1 then
 						stack[inst.A] = import
 					elseif count == 2 then
@@ -626,16 +627,16 @@ local function luau_load(module, env, luau_settings)
 					stack[A] = sb[kv]
 
 					pc += 1 --// adjust for aux 
-					
+
 					--// Special handling for native namecall behaviour
 					local useNativeHandler = luau_settings.useNativeNamecall
-					
+
 					if useNativeHandler then
 						local nativeNamecall = luau_settings.namecallHandler
-						
+
 						local callInst = code[pc]
 						local callOp = callInst.opcode
-						
+
 						--// Copied from the CALL handler under
 						local callA, callB, callC = callInst.A, callInst.B, callInst.C
 
@@ -643,17 +644,17 @@ local function luau_load(module, env, luau_settings)
 						local ret_list = table_pack(
 							nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params))
 						)
-						
+
 						if ret_list[1] == true then
 							pc += 1 --// Skip next CALL instruction
-							
+
 							inst = callInst
 							op = callOp
 							debugging.pc = pc
 							debugging.name = inst.opname
-							
+
 							table_remove(ret_list, 1)
-						
+
 							local ret_num = ret_list.n - 1
 
 							if callC == 0 then
@@ -905,7 +906,7 @@ local function luau_load(module, env, luau_settings)
 
 					local it = stack[A]
 
-					if ttisfunction(it) then 
+					if (luau_settings.generalizedIteration == false) or ttisfunction(it) then 
 						local vals = { it(stack[A + 1], stack[A + 2]) }
 						table_move(vals, 1, res, A + 3, stack)
 
@@ -1007,7 +1008,7 @@ local function luau_load(module, env, luau_settings)
 				elseif op == 76 then --[[ FORGPREP ]]
 					local iterator = stack[inst.A]
 
-					if not ttisfunction(iterator) then
+					if (luau_settings.generalizedIteration == true) and not ttisfunction(iterator) then
 						local loopInstruction = code[pc + inst.D]
 						if generalized_iterators[loopInstruction] == nil then 
 							local function gen_iterator(...)
@@ -1102,7 +1103,7 @@ local function luau_load(module, env, luau_settings)
 				return error(string_format("Fiu VM Error PC: %s Opcode: %s: \n%s",debugging.pc, debugging.name, result[2]), 0)
 			end
 		end
-		
+
 		return wrapped
 	end
 

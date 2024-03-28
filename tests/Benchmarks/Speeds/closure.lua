@@ -17,7 +17,7 @@ local settings = Fiu.luau_newsettings()
 
 settings.errorHandling = false
 
-local fiuEnv = {tostring = tostring}
+local fiuEnv = {}
 local fiuExecute = Fiu.luau_load(compileResult, fiuEnv, settings)
 local fiuCodeGenExecute = FiuCodeGen.luau_load(compileResult, fiuEnv, settings)
 

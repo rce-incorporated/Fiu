@@ -269,9 +269,9 @@ local function foo ()
   setfenv(foo, n)
   local env = getfenv(foo)
   -- Fiu,
-  --   getfenv(2) when FIU_DEBUGGING is true
-  --   getfenv(3) when FIU_DEBUGGING is false
-  local fiuEnv = getfenv(2)
+  --   getfenv(1) when errorHandling is false
+  --   getfenv(3) when errorHandling is true
+  local fiuEnv = getfenv(1)
   if not (env == fiuEnv) then
     fiuEnv = getfenv(3)
   end

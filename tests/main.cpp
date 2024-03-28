@@ -197,7 +197,10 @@ static int lua_collectgarbage(lua_State* L)
 
 int testOk(lua_State* L)
 {
-	lua_pushboolean(L, 1);
+	if (!lua_isstring(L, 1))
+	{
+		lua_pushboolean(L, 1);
+	}
 	lua_setfield(L, LUA_REGISTRYINDEX, "@TestResult");
 	return 0;
 }
@@ -373,6 +376,8 @@ lua_State* newLuau(const char* chunkName = "Luau")
 
 	lua_pushboolean(L, 0);
 	lua_setfield(L, LUA_REGISTRYINDEX, "@TestResult");
+	lua_pushinteger(L, 0);
+	lua_setfield(L, LUA_REGISTRYINDEX, "@TestStepLine");
 
 	lua_pushvalue(L, LUA_GLOBALSINDEX);
 	luaL_register(L, NULL, funcs);
@@ -433,6 +438,8 @@ lua_State* newFiu(const char* chunkName = "Fiu")
 
 	lua_pushboolean(L, 0);
 	lua_setfield(L, LUA_REGISTRYINDEX, "@TestResult");
+	lua_pushinteger(L, 0);
+	lua_setfield(L, LUA_REGISTRYINDEX, "@TestStepLine");
 
 	lua_pushvalue(L, LUA_GLOBALSINDEX);
 	luaL_register(L, NULL, funcs);
@@ -464,7 +471,7 @@ lua_State* newFiu(const char* chunkName = "Fiu")
 TestResult RUN_TEST(string testName, string fileName)
 {
 	TestResult result;
-	
+
 	optional<string> fileSource = readLuauFile(fileName);
 	if (!fileSource.has_value())
 	{
@@ -516,6 +523,31 @@ TestResult RUN_TEST(string testName, string fileName)
 
 					lua_pushboolean(L, false);
 					lua_setfield(L, -2, "errorHandling");
+
+					lua_getfield(L, -1, "callHooks");
+					lua_pushcfunction(L, [](lua_State* L) -> int {
+						luaL_checktype(L, 1, LUA_TTABLE); // stack
+						luaL_checktype(L, 2, LUA_TTABLE); // debugging
+						luaL_checktype(L, 3, LUA_TTABLE); // proto
+
+						int infotype = lua_getfield(L, 3, "instructionlineinfo");
+						if (infotype != LUA_TTABLE)
+							return 0;
+						int pctype = lua_getfield(L, 2, "pc");
+						if (pctype != LUA_TNUMBER)
+							return 0;
+						lua_rawgeti(L, -2, lua_tointeger(L, -1));
+						if (lua_isnil(L, -1))
+							return 0;
+
+						int line = lua_tointeger(L, -1);
+
+						lua_setfield(L, LUA_REGISTRYINDEX, "@TestStepLine");
+
+						return 0;
+					}, "stepHook");
+					lua_setfield(L, -2, "stepHook");
+					lua_pop(L, 1);
 					
 					lua_getfield(L, -3, "luau_load");
 					lua_pushvalue(L, -3);
@@ -553,19 +585,29 @@ TestResult RUN_TEST(string testName, string fileName)
 				if (presult == 0)
 				{
 					lua_getfield(L, LUA_REGISTRYINDEX, "@TestResult");
-					int b = lua_toboolean(L, -1);
-					if (b == 1)
+					if (lua_isstring(L, -1) || (lua_isboolean(L, -1) && lua_toboolean(L, -1) == 1))
 					{
 						result.success = true;
-						result.output = uformat("[%s] Test [%s]: Passed", SUCCESS_SYMBOL, testName.c_str());
-					} else
+						if (lua_isstring(L, -1))
+							result.output = uformat("[%s] Test [%s]: Passed ", SUCCESS_SYMBOL, testName.c_str()) + "{ " + string(lua_tostring(L, -1)) + " }";
+						else
+							result.output = uformat("[%s] Test [%s]: Passed", SUCCESS_SYMBOL, testName.c_str());
+					}
+					else
 					{
 						result.output = uformat("[%s] Test [%s]: No valid confirmation (not OK)", ERROR_SYMBOL, testName.c_str());
 					}
 				}
 				else
 				{
-					result.output = uformat("[%s] Test [%s]: Error: ", ERROR_SYMBOL, testName.c_str()) + string(lua_tostring(L, -1));
+					if (useLuau) {
+						result.output = uformat("[%s] Test [%s]: Error: ", ERROR_SYMBOL, testName.c_str()) + string(lua_tostring(L, -1));
+					}
+					else
+					{
+						lua_getfield(L, LUA_REGISTRYINDEX, "@TestStepLine");
+						result.output = uformat("[%s] Test [%s]: Error: ", ERROR_SYMBOL, testName.c_str()) + string(lua_tostring(L, -1)) + ":" + string(lua_tostring(L, -2));
+					}
 				}
 			}
 		} catch (const std::future_error& fe)

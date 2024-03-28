@@ -138,5 +138,9 @@ FIU_TESTCASES {
 		"Specs/extensions",
 		"Specs/nativeNamecall",
 		"Specs/vectorLib",
+	}},
+	{"Benchmarks", {
+		// Fiu Benchmark Tests
+		"Benchmarks/maxcstack",
 	}}
 };

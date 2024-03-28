@@ -72,7 +72,7 @@ do
   end
   assert(f[3]() == 12 and A == 12) -- 3, 11
   local a,b = f[8](1)
-  assert(b.A == 13) -- 9
+  assert(b.A == 8) -- 9
   a,b = f[8](0)
   assert(b.A == 14)   -- 11, `real' global
   local g

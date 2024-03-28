@@ -33,7 +33,6 @@ local bit32_btest = bit32.btest
 local bit32_rshift = bit32.rshift
 local bit32_lshift = bit32.lshift
 local bit32_extract = bit32.extract
-local bit32_bnot = bit32.bnot
 
 local ttisnumber = function(v) return type(v) == "number" end
 local ttisstring = function(v) return type(v) == "string" end
@@ -171,6 +170,8 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.extensions) == "table", "luau_settings.extensions should be a table of functions")
 	assert(type(luau_settings.callHooks) == "table", "luau_settings.callHooks should be a table of functions")
 	assert(type(luau_settings.errorHandling) == "boolean", "luau_settings.errorHandling should be a boolean")
+	assert(type(luau_settings.generalizedIteration) == "boolean", "luau_settings.generalizedIteration should be a boolean")
+	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
 end
 
 local function luau_deserialize(bytecode, luau_settings)
@@ -546,7 +547,37 @@ local function luau_load(module, env, luau_settings)
 	end
 
 	local function luau_wrapclosure(module, proto, upvals)
-		local function luau_execute(debugging, stack, protos, code, varargs)
+		local function luau_execute(...)
+			local debugging, stack, protos, code, varargs
+			
+			if luau_settings.errorHandling then
+				debugging, stack, protos, code, varargs = ... 
+			else 
+				--// Copied from error handling wrapper
+				local passed = table_pack(...)
+				stack = table_create(proto.maxstacksize)
+				varargs = {
+					len = 0,
+					list = {},
+				}
+	
+				table_move(passed, 1, proto.numparams, 0, stack)
+	
+				if proto.numparams < passed.n then
+					local start = proto.numparams + 1
+					local len = passed.n - proto.numparams
+					varargs.len = len
+					table_move(passed, start, start + len - 1, 1, varargs.list)
+				end
+	
+				passed = nil
+	
+				debugging = {pc = 0, name = "NONE"}
+
+				protos = proto.protos 
+				code = proto.code
+			end 
+
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "ks"})
 			local constants = proto.k
 			local extensions = luau_settings.extensions
@@ -707,6 +738,14 @@ local function luau_load(module, env, luau_settings)
 						--// Copied from the CALL handler under
 						local callA, callB, callC = callInst.A, callInst.B, callInst.C
 
+						if stepHook then
+							stepHook(stack, debugging, proto, module, upvals)
+						end
+
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
+						end
+
 						local params = if callB == 0 then top - callA else callB - 1
 						local ret_list = table_pack(
 							nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params))
@@ -715,20 +754,12 @@ local function luau_load(module, env, luau_settings)
 						if ret_list[1] == true then
 							useFallback = false
 							
-							if interruptHook then
-								interruptHook(stack, debugging, proto, module, upvals)	
-							end
-
 							pc += 1 --// Skip next CALL instruction
 
 							inst = callInst
 							op = callOp
 							debugging.pc = pc
 							debugging.name = inst.opname
-
-							if stepHook then
-								stepHook(stack, debugging, proto, module, upvals)
-							end
 
 							table_remove(ret_list, 1)
 
@@ -1240,7 +1271,11 @@ local function luau_load(module, env, luau_settings)
 			end
 		end
 
-		return wrapped
+		if luau_settings.errorHandling then 
+			return wrapped
+		else 
+			return luau_execute
+		end 
 	end
 
 	return luau_wrapclosure(module, mainProto),  luau_close

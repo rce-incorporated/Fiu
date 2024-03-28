@@ -2,6 +2,7 @@
 #include "luau/CLI/FileUtils.h"
 #include "luau/CLI/Coverage.h"
 #include "Luau/Compiler.h"
+#include "Luau/CodeGen.h"
 
 #include "Config.h"
 
@@ -68,13 +69,66 @@ static Luau::CompileOptions compleOptions()
 }
 
 string fiuBytecode;
+bool fiuSupportsCodeGen = false;
 
-TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled")
+TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled", bool codegen = false)
 {
 	lua_State* L = luaL_newstate();
+	if (codegen)
+		if (Luau::CodeGen::isSupported())
+			Luau::CodeGen::create(L);
+		else
+			return {false, "Platform does not support CodeGen"};
 	string bytecode = Luau::compile(source, opts);
 	if (luau_load(L, name, bytecode.data(), bytecode.size(), 0) == 0)
 	{
+		if (codegen)
+		{
+			Luau::CodeGen::CompilationStats nativeStats;
+			Luau::CodeGen::CodeGenCompilationResult result = Luau::CodeGen::compile(L, -1, Luau::CodeGen::CodeGen_ColdFunctions, &nativeStats);
+			if (result != Luau::CodeGen::CodeGenCompilationResult::Success || nativeStats.functionsCompiled == 0)
+			{
+				lua_close(L);
+				string reason;
+				if (result == Luau::CodeGen::CodeGenCompilationResult::Success)
+					reason = "No functions compiled";
+				else
+					switch (result)
+					{
+					case Luau::CodeGen::CodeGenCompilationResult::NothingToCompile:
+						reason = "Nothing To Compile";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::NotNativeModule:
+						reason = "Not Native Module";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenNotInitialized:
+						reason = "CodeGen Not Initialized";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenOverflowInstructionLimit:
+						reason = "CodeGen Overflow Instruction Limit";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenOverflowBlockLimit:
+						reason = "CodeGen Overflow Block Limit";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenOverflowBlockInstructionLimit:
+						reason = "CodeGen Overflow Block Instruction Limit";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenAssemblerFinalizationFailure:
+						reason = "CodeGen Assembler Finalization Failure";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::CodeGenLoweringFailure:
+						reason = "CodeGen Lowering Failure";
+						break;
+					case Luau::CodeGen::CodeGenCompilationResult::AllocationFailed:
+						reason = "Allocation Failed";
+						break;
+					default:
+						reason = "Unknown";
+						break;
+					}
+				return {false, "Failed to compile CodeGen:" + reason};
+			}
+		}
 		lua_close(L);
 		return {true, bytecode};
 	}
@@ -311,6 +365,49 @@ void loadFiu(lua_State* L)
 	lua_xmove(ML, L, 1);
 }
 
+bool loadFiuCodeGen(lua_State* L)
+{
+	bool codegen = false;
+	lua_State* GL = lua_mainthread(L);
+	lua_State* ML = lua_newthread(GL);
+	lua_xmove(GL, L, 1);
+
+	luaL_sandboxthread(ML);
+
+	if (luau_load(ML, "FiuCodeGen", fiuBytecode.data(), fiuBytecode.size(), 0) == 0)
+	{
+		if (fiuSupportsCodeGen)
+		{
+			Luau::CodeGen::CodeGenCompilationResult result = Luau::CodeGen::compile(ML, -1, Luau::CodeGen::CodeGen_ColdFunctions);
+			codegen = result == Luau::CodeGen::CodeGenCompilationResult::Success;
+		}
+		if (coverageActive())
+			coverageTrack(ML, -1);
+		int status = lua_resume(ML, L, 0);
+		if (status == 0)
+		{
+			if (lua_gettop(ML) == 0)
+			lua_pushstring(ML, "fiu must return a value");
+			else if (!lua_istable(ML, -1) && !lua_isfunction(ML, -1))
+			lua_pushstring(ML, "fiu must return a table or function");
+		}
+		else if (status == LUA_YIELD)
+		{
+			lua_pushstring(ML, "fiu can not yield");
+		}
+		else if (!lua_isstring(ML, -1))
+		{
+			lua_pushstring(ML, "unknown error while running fiu");
+		}
+	}
+
+	if (lua_isstring(L, -1))
+		lua_error(L);
+	lua_xmove(ML, L, 1);
+
+	return codegen;
+}
+
 int getNamecall(lua_State* L)
 {
 	const char* str = lua_namecallatom(L, nullptr);
@@ -360,6 +457,9 @@ lua_State* newLuau(const char* chunkName = "Luau")
 {
 	lua_State* L = luaL_newstate();
 
+	if (fiuSupportsCodeGen)
+		Luau::CodeGen::create(L);
+	
 	luaL_openlibs(L);
 
 	static const luaL_Reg funcs[] = {
@@ -392,6 +492,15 @@ lua_State* newLuau(const char* chunkName = "Luau")
 	// Load Fiu Module
 	loadFiu(L);
 	lua_setglobal(L, "Fiu");
+
+	// Load FiuCodeGen Module
+	bool codegenReady = loadFiuCodeGen(L);
+	if (codegenReady)
+	{
+		lua_pushboolean(L, 1);
+		lua_setfield(L, -2, "__codegenReady");
+	}
+	lua_setglobal(L, "FiuCodeGen");
 
 	// Load FiuUtils
 	loadFiuUtils(L);
@@ -763,7 +872,7 @@ int main(int argc, char* argv[])
 	}
 	printf("[%s] Fiu: Compiled\n", SUCCESS_SYMBOL);
 
-	fiuBytecode = Luau::compile(fiuSource, compleOptions());
+	fiuBytecode = fiuCompileResult.data;
 
 	// Load Fiu
 	{
@@ -799,6 +908,18 @@ int main(int argc, char* argv[])
 		}
 
 		lua_close(L);
+	}
+	
+	// Compile Fiu (CodeGen)
+	TestCompileResult fiuCodeGenCompileResult = compileTest(fiuSource, compleOptions(), "FiuCodeGen", true);
+	if (!fiuCodeGenCompileResult.success)
+	{
+		printf("[%s] Failed to Compile 'Fiu'(CodeGen): %s\n", WARN_SYMBOL, fiuCodeGenCompileResult.data.c_str());
+	}
+	else
+	{
+		fiuSupportsCodeGen = true;
+		printf("[%s] Fiu(CodeGen): Compiled\n", SUCCESS_SYMBOL);
 	}
 
 	printf("\n");

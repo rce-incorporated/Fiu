@@ -49,7 +49,7 @@ local totalTime = os.clock() - testStart
 
 local results = `Set/Get Table Speed: [Luau: {math.round(luauTime * 1000000)}us] [Fiu: {math.round(fiuTime * 1000000)}us]`;
 if FiuCodeGen.__codegenReady then
-	results ..= ` [Fiu (CodeGen): {math.round(fiuCodeGenTime * 1000000)}]`;
+	results ..= ` [Fiu (CodeGen): {math.round(fiuCodeGenTime * 1000000)}us]`;
 else
 	results ..= ` [Fiu (CodeGen): None]`;
 end

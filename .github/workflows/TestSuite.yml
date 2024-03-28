@@ -16,11 +16,19 @@ jobs:
       - name: Install Submodules
         run: git submodule update --init --recursive
 
-      - name: Make tests
+      - name: Cache TestSuite
+        id: cache-test-suite
+        uses: actions/cache@v3
+        with:
+          path: ./build/fiu-tests
+          key: ${{ runner.os }}-build-test-suite-${{ hashFiles('./tests/**/*.cpp') }}-${{ hashFiles('./tests/**/*.h') }}
+
+      - if: ${{ steps.cache-test-suite.outputs.cache-hit != 'true' }}
+        name: Make tests
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Release ./tests
-          cmake --build . --target=fiu-tests
+          cmake -DCMAKE_BUILD_TYPE=Release -B ./build ./tests
+          cmake --build ./build --target=fiu-tests --config Release
       
       - name: Run tests
         run: |
-          ./fiu-tests -O2 -D2
+          ./build/fiu-tests -O2 -D2

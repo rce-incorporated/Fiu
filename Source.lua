@@ -420,7 +420,7 @@ local function luau_deserialize(bytecode, luau_settings)
 		local debugnameindex = readVarInt()
 		local debugname 
 
-		if debugnameindex == 0 then
+		if debugnameindex ~= 0 then
 			debugname = stringList[debugnameindex]
 		else 
 			debugname = "(??)"

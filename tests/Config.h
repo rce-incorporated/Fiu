@@ -128,5 +128,15 @@ FIU_TESTCASES {
 		"Staging/Unary",
 		"Staging/Varargs",
 		"Staging/WhileRepeat",
+	}},
+	{"Specs", {
+		// Fiu Spec Tests
+		"Specs/CallHooks/breakHook",
+		"Specs/CallHooks/interruptHook",
+		"Specs/CallHooks/panicHook",
+		"Specs/CallHooks/stepHook",
+		"Specs/extensions",
+		"Specs/nativeNamecall",
+		"Specs/vectorLib",
 	}}
 };

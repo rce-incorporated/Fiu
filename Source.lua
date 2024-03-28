@@ -434,9 +434,6 @@ local function luau_deserialize(bytecode, luau_settings)
 			local linegaplog2 = readByte()
 
 			local intervals = bit32_rshift((sizecode - 1), linegaplog2) + 1
-			local absoffset = bit32_band(sizecode + 3, bit32_bnot(3))
-
-			local sizelineinfo = absoffset + intervals * 4; --// sizeof(int)
 
 			local lineinfo = table_create(sizecode)
 			local abslineinfo = table_create(intervals)
@@ -550,7 +547,7 @@ local function luau_load(module, env, luau_settings)
 
 	local function luau_wrapclosure(module, proto, upvals)
 		local function luau_execute(debugging, stack, protos, code, varargs)
-			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "kvs"})
+			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "ks"})
 			local constants = proto.k
 			local extensions = luau_settings.extensions
 

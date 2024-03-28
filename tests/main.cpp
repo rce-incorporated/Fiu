@@ -308,6 +308,51 @@ void loadFiu(lua_State* L)
 	lua_xmove(ML, L, 1);
 }
 
+int getNamecall(lua_State* L)
+{
+	const char* str = lua_namecallatom(L, nullptr);
+	lua_pushstring(L, str);
+	return 1;
+}
+
+int createVector(lua_State* L)
+{
+	double x = luaL_checknumber(L, 1);
+	double y = luaL_checknumber(L, 2);
+	double z = luaL_checknumber(L, 3);
+
+#if LUA_VECTOR_SIZE == 4
+	double w = luaL_optnumber(L, 4, 0.0);
+	lua_pushvector(L, float(x), float(y), float(z), float(w));
+#else
+	lua_pushvector(L, float(x), float(y), float(z));
+#endif
+	return 1;
+}
+
+int vector__index(lua_State* L)
+{
+	const float* v = luaL_checkvector(L, 1);
+	const char* key = luaL_checkstring(L, 2);
+	if (strcmp(key, "x") == 0)
+		lua_pushnumber(L, v[0]);
+	else if (strcmp(key, "y") == 0)
+		lua_pushnumber(L, v[1]);
+	else if (strcmp(key, "z") == 0)
+		lua_pushnumber(L, v[2]);
+#if LUAU_VECTOR_SIZE == 4
+	else if (strcmp(key, "w") == 0)
+		lua_pushnumber(L, v[3]);
+#endif
+	else
+	{
+		lua_pushstring(L, "Invalid vector key");
+		lua_error(L);
+	}
+	return 1;
+}
+
+
 lua_State* newLuau(const char* chunkName = "Luau")
 {
 	lua_State* L = luaL_newstate();
@@ -317,6 +362,8 @@ lua_State* newLuau(const char* chunkName = "Luau")
 	static const luaL_Reg funcs[] = {
 		{"loadstring", lua_loadstring},
 		{"collectgarbage", lua_collectgarbage},
+		{"getNamecall", getNamecall},
+		{"VECTOR", createVector},
 		{"MATCH", valueComparator},
 		{"OK", testOk},
 		{NULL, NULL},
@@ -343,6 +390,18 @@ lua_State* newLuau(const char* chunkName = "Luau")
 
 	// Load FiuUtils
 	loadFiuUtils(L);
+
+	// Load Vector
+#if LUA_VECTOR_SIZE == 4
+	lua_pushvector(L, 0.0f, 0.0f, 0.0f, 0.0f);
+#else
+	lua_pushvector(L, 0.0f, 0.0f, 0.0f);
+#endif
+	luaL_newmetatable(L, "vector");
+	lua_pushcfunction(L, vector__index, nullptr);
+	lua_setfield(L, -2, "__index");
+	lua_setmetatable(L, -2);
+	lua_pop(L, 1);
 
 	lua_pushstring(L, "Luau");
 	lua_setglobal(L, "TEST_CTX");

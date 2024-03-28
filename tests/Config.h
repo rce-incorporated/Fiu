@@ -21,6 +21,7 @@ using namespace std;
 #define COLOR_RESET "\033[1;0m"   // ANSI escape code to reset the color
 
 #define ERROR_SYMBOL (COLOR_RED "X" COLOR_RESET)
+#define WARN_SYMBOL (COLOR_YELLOW "-" COLOR_RESET)
 #define SUCCESS_SYMBOL (COLOR_GREEN "+" COLOR_RESET)
 
 #define FIU_TESTCASES map<string, vector<string>> TestCases =
@@ -141,6 +142,8 @@ FIU_TESTCASES {
 	}},
 	{"Benchmarks", {
 		// Fiu Benchmark Tests
+		"Benchmarks/Speeds/closure",
+		"Benchmarks/Speeds/table",
 		"Benchmarks/maxcstack",
 	}}
 };

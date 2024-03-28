@@ -1,34 +1,30 @@
+getfenv()
+
 local a = 5
 if a then 
-	print("IF", a)
+	string.sub("valid", 1,2)
 end 
 if not a then 
-	print("NOTIF", a)
+	error('invalid')
 end
 if a == math.floor(1) then 
-	a += 1 
-	print("EQ", a) 
+	error('invalid')
 else 
 end
 if a ~= math.floor(1) then 
-	a += 1 
-	print("NEQ", a) 
+	string.sub("valid", 1,2)
 end
 if a >= math.floor(1) then
- 	a += 1 
- 	print("GTE", a) 
+	string.sub("valid", 1,2)
  end
 if a > math.floor(1) then 
-	a += 1 
-	print("GT", a) 
+	string.sub("valid", 1,2)
 end
 if a < math.floor(1) then 
-	a += 1 
-	print("LT", a) 
+	error('invalid')
 end
 if a <= math.floor(1) then 
-	a += 1 
-	print("LTE", a) 
+	error('invalid')
 end
 
 OK()

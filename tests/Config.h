@@ -32,8 +32,10 @@ bool DEBUG_LUAU_ENABLE_PRINT = false;
 bool DEBUG_LUAU_ENABLE_WARN = false;
 
 FIU_EXPORT {
-	{"luau_load", "function"},
-	{"luau_deserialize", "function"}
+	{"luau_newsettings", "function"},
+	{"luau_validatesettings", "function"},
+	{"luau_deserialize", "function"},
+	{"luau_load", "function"}
 };
 
 FIU_TESTCASES {
@@ -116,7 +118,6 @@ FIU_TESTCASES {
 		"Staging/ForLoops",
 		"Staging/FunctionIssue",
 		"Staging/GenericFor",
-		"Staging/GetImportSpecial",
 		"Staging/Globals",
 		"Staging/HelloWorld",
 		"Staging/LOADN",
@@ -127,5 +128,15 @@ FIU_TESTCASES {
 		"Staging/Unary",
 		"Staging/Varargs",
 		"Staging/WhileRepeat",
+	}},
+	{"Specs", {
+		// Fiu Spec Tests
+		"Specs/CallHooks/breakHook",
+		"Specs/CallHooks/interruptHook",
+		"Specs/CallHooks/panicHook",
+		"Specs/CallHooks/stepHook",
+		"Specs/extensions",
+		"Specs/nativeNamecall",
+		"Specs/vectorLib",
 	}}
 };

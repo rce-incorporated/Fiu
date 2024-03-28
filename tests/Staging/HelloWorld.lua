@@ -1,3 +1,3 @@
-print("Hello World")
+assert("Hello World")
 
 OK()

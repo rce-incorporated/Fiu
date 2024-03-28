@@ -46,7 +46,9 @@ vector<string> fiuProtoField = {
 	"maxstacksize", "numparams",
 	"nups", "isvararg", "linedefined",
 	"debugname", "sizecode", "sizek",
-	"sizep", "protos", "code"
+	"sizep", "protos",
+	"lineinfoenabled", "instructionlineinfo",
+	"code",
 };
 
 vector<string> fiuCodeField = {
@@ -145,6 +147,8 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 		lua_newtable(L);
 		lua_pushunsigned(L, stoul(string(src + 1, srcLen - 1)));
 		lua_setfield(L, -2, "value");
+		lua_pushstring(L, "auxvalue");
+		lua_setfield(L, -2, "opname");
 		return;
 	}
 
@@ -218,7 +222,7 @@ void fiuDecodeCode(lua_State* L, const char* src, size_t srcLen)
 
 	string opname = opList.at(opcode);
 	lua_pushstring(L, opname.c_str());
-	lua_setfield(L, -2, "name");
+	lua_setfield(L, -2, "opname");
 }
 
 void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
@@ -246,10 +250,14 @@ void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 		string s = protoList.at(idx);
 		idx++;
 		if (s == "?")
-			continue;
-		if (
+			if (field == "debugname")
+				lua_pushstring(L, "(??)");
+			else
+				continue;
+		else if (
 			field == "debugname" || field == "isvararg" ||
-			field == "protos" || field == "code"
+			field == "protos" || field == "code" ||
+			field == "lineinfoenabled" || field == "instructionlineinfo"
 		)
 		{
 			if (field == "isvararg")
@@ -296,6 +304,27 @@ void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 					lua_pop(L, 4); // pops: code table, output table, Constants, StringList
 					
 					idx++;
+				}
+			}
+			else if (field == "lineinfoenabled")
+			{
+				lua_pushboolean(L, s == "1");
+			}
+			else if (field == "instructionlineinfo")
+			{
+				if (s.size() == 2)
+					lua_newtable(L); // empty table
+				else
+				{
+					vector<string> lineInfo = splitString(s.c_str() + 1, s.size() - 3, ",");
+					lua_newtable(L);
+					int idx = 1;
+					for (string& k : lineInfo)
+					{
+						lua_pushinteger(L, stoi(k));
+						lua_rawseti(L, -2, idx);
+						idx++;
+					}
 				}
 			}
 		}
@@ -427,7 +456,8 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 		}
 		if (
 			field == "debugname" || field == "isvararg" ||
-			field == "protos" || field == "code"
+			field == "protos" || field == "code" ||
+			field == "lineinfoenabled" || field == "instructionlineinfo"
 		)
 		{
 			if (field == "debugname")
@@ -437,10 +467,18 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 				int index = tableFind(L);
 				if (index == -1)
 				{
-					lua_pushstring(L, "Expected string in stringList");
-					lua_error(L);
+					if (strcmp(lua_tostring(L, -1), "(??)") == 0
+						|| strcmp(lua_tostring(L, -1), "(main)") == 0) {
+						encoded.append(" ?");
+					}
+					else
+					{
+						lua_pushstring(L, "Expected string in stringList");
+						lua_error(L);
+					}
 				}
-				encoded.append(uformat(" %d", index));
+				else
+					encoded.append(uformat(" %d", index));
 			}
 			else if (field == "isvararg")
 				encoded.append(lua_toboolean(L, -1) ? " 1" : " 0");
@@ -471,6 +509,20 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 				encoded.append(" [");
 				luaL_checktype(L, -1, LUA_TTABLE);
 				lua_pushnil(L);
+				while (int nr = lua_next(L, -2) != 0)
+				{
+					encoded.append(uformat("%d,", lua_tointeger(L, -1)));
+					lua_pop(L, 1);
+				}
+				encoded.append("]");
+			}
+			else if (field == "lineinfoenabled")
+				encoded.append(lua_toboolean(L, -1) ? " 1" : " 0");
+			else if (field == "instructionlineinfo")
+			{
+				luaL_checktype(L, -1, LUA_TTABLE);
+				lua_pushnil(L);
+				encoded.append(" [");
 				while (int nr = lua_next(L, -2) != 0)
 				{
 					encoded.append(uformat("%d,", lua_tointeger(L, -1)));
@@ -567,7 +619,6 @@ int fiuApiEncodeModule(lua_State* L)
 	{
 		if (iter > 1)
 			encoded.append("\n");
-		int vt = lua_type(L, -1);
 		lua_pushvalue(L, -1); // proto
 		lua_pushvalue(L, stringList); // StringList
 		string encodedProto = fiuEncodeProto(L, 4);
@@ -795,6 +846,8 @@ int fiuApiDecodeModule(lua_State* L)
 	}
 	lua_pushvalue(L, -2);
 	lua_rawgeti(L, -2, mainProtoId);
+	lua_pushstring(L, "(main)");
+	lua_setfield(L, -2, "debugname");
 	lua_setfield(L, -2, "mainProto");
 	lua_pop(L, 1);
 	

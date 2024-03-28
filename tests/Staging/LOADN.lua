@@ -1,4 +1,5 @@
 local a = 1
-print(a)
+assert(a)
+assert(type(a) == "number")
 
 OK()

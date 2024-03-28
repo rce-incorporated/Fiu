@@ -537,10 +537,8 @@ TestResult RUN_TEST(string testName, string fileName)
 						if (pctype != LUA_TNUMBER)
 							return 0;
 						lua_rawgeti(L, -2, lua_tointeger(L, -1));
-						if (lua_isnil(L, -1))
+						if (!lua_isnumber(L, -1))
 							return 0;
-
-						int line = lua_tointeger(L, -1);
 
 						lua_setfield(L, LUA_REGISTRYINDEX, "@TestStepLine");
 

@@ -895,32 +895,16 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = stack[inst.B] ^ inst.K
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
-					if (not not value) == false then
-						stack[inst.A] = value
-					else
-						stack[inst.A] = stack[inst.C] or false
-					end
+					stack[inst.A] = if value then stack[inst.C] or false else value
 				elseif op == 46 then --[[ OR ]]
 					local value = stack[inst.B]
-					if (not not value) == true then
-						stack[inst.A] = value
-					else
-						stack[inst.A] = stack[inst.C] or false
-					end
+					stack[inst.A] = if value then value else stack[inst.C] or false
 				elseif op == 47 then --[[ ANDK ]]
 					local value = stack[inst.B]
-					if (not not value) == false then
-						stack[inst.A] = value
-					else
-						stack[inst.A] = inst.K or false
-					end
+					stack[inst.A] = if value then inst.K or false else value
 				elseif op == 48 then --[[ ORK ]]
 					local value = stack[inst.B]
-					if (not not value) == true then
-						stack[inst.A] = value
-					else
-						stack[inst.A] = inst.K or false
-					end
+					stack[inst.A] = if value then value else inst.K or false
 				elseif op == 49 then --[[ CONCAT ]]
 					local s = ""
 					for i = inst.B, inst.C do

@@ -68,6 +68,9 @@ FIU_TESTCASES {
 		"Conformance/utf8",
 		"Conformance/vararg",
 
+		// Emulated Tests
+		"Conformance/Emulated/Coverage",
+
 		// Instruction Specific Tests
 		"Conformance/Instructions/Calls",
 		"Conformance/Instructions/Constants",

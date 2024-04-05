@@ -110,3 +110,6 @@ end
 [Rerumu](https://github.com/Rerumu/)  
 [Green](https://github.com/green-real/)  
 [SnorlaxAssist](https://github.com/Snorlaxassist)  
+[Someon1e](https://github.com/Someon1e)  
+[arcturus-prime](https://github.com/arcturus-prime)  
+[SnowyShiro](https://github.com/SnowyShiro)  

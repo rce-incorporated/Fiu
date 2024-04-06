@@ -1,3 +1,33 @@
+-- 5 x 5 with else --
+
+--[[
+Fiu: https://github.com/rce-incorporated/Fiu
+
+MIT License
+
+Copyright (c) 2022-2024 TheGreatSageEqualToHeaven
+Copyright (c) 2019-2024 Roblox Corporation
+Copyright (c) 1994–2019 Lua.org, PUC-Rio.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. 
+]]
+
 -- // Environment changes in the VM are not supposed to alter the behaviour of the VM so we localise globals beforehand
 local type = type
 local pcall = pcall
@@ -596,597 +626,643 @@ local function luau_load(module, env, luau_settings)
 					stepHook(stack, debugging, proto, module, upvals)
 				end
 
-				if op == 0 then --[[ NOP ]]
-					--// Do nothing
-				elseif op == 1 then --[[ BREAK ]]
-					if breakHook then
-						breakHook(stack, debugging, proto, module, upvals)
-					else
-						error("Breakpoint encountered without a break hook")
-					end
-				elseif op == 2 then --[[ LOADNIL ]]
-					stack[inst.A] = nil
-				elseif op == 3 then --[[ LOADB ]]
-					stack[inst.A] = inst.B == 1
-					pc += inst.C
-				elseif op == 4 then --[[ LOADN ]]
-					stack[inst.A] = inst.D
-				elseif op == 5 then --[[ LOADK ]]
-					stack[inst.A] = inst.K
-				elseif op == 6 then --[[ MOVE ]]
-					stack[inst.A] = stack[inst.B]
-				elseif op == 7 then --[[ GETGLOBAL ]]
-					local kv = inst.K
-
-					stack[inst.A] = extensions[kv] or env[kv]
-
-					pc += 1 --// adjust for aux
-				elseif op == 8 then --[[ SETGLOBAL ]]
-					local kv = inst.K
-					env[kv] = stack[inst.A]
-
-					pc += 1 --// adjust for aux
-				elseif op == 9 then --[[ GETUPVAL ]]
-					local uv = upvals[inst.B + 1]
-					stack[inst.A] = uv.store[uv.index]
-				elseif op == 10 then --[[ SETUPVAL ]]
-					local uv = upvals[inst.B + 1]
-					uv.store[uv.index] = stack[inst.A]
-				elseif op == 11 then --[[ CLOSEUPVALS ]]
-					for i, uv in open_upvalues do
-						if uv.index >= inst.A then
-							uv.value = uv.store[uv.index]
-							uv.store = uv
-							uv.index = "value" --// self reference
-							open_upvalues[i] = nil
+				if op <= 5 then --[[ NOP ]]
+					if op == 1 then --[[ BREAK ]]
+						if breakHook then
+							breakHook(stack, debugging, proto, module, upvals)
+						else
+							error("Breakpoint encountered without a break hook")
 						end
+					elseif op == 2 then --[[ LOADNIL ]]
+						stack[inst.A] = nil
+					elseif op == 3 then --[[ LOADB ]]
+						stack[inst.A] = inst.B == 1
+						pc += inst.C
+					elseif op == 4 then --[[ LOADN ]]
+						stack[inst.A] = inst.D
+					else --[[ LOADK ]]
+						stack[inst.A] = inst.K
 					end
-				elseif op == 12 then --[[ GETIMPORT ]]
-					local count = inst.KC
-					local k0 = inst.K0
-					local import = extensions[k0] or env[k0]
-
-					if count == 1 then
-						stack[inst.A] = import
-					elseif count == 2 then
-						stack[inst.A] = import[inst.K1]
-					elseif count == 3 then
-						stack[inst.A] = import[inst.K1][inst.K2]
+				elseif op <= 10 then
+					if op == 6 then --[[ MOVE ]]
+						stack[inst.A] = stack[inst.B]
+					elseif op == 7 then --[[ GETGLOBAL ]]
+						local kv = inst.K
+	
+						stack[inst.A] = extensions[kv] or env[kv]
+	
+						pc += 1 --// adjust for aux
+					elseif op == 8 then --[[ SETGLOBAL ]]
+						local kv = inst.K
+						env[kv] = stack[inst.A]
+	
+						pc += 1 --// adjust for aux
+					elseif op == 9 then --[[ GETUPVAL ]]
+						local uv = upvals[inst.B + 1]
+						stack[inst.A] = uv.store[uv.index]
+					else --[[ SETUPVAL ]]
+						local uv = upvals[inst.B + 1]
+						uv.store[uv.index] = stack[inst.A]
 					end
-
-					pc += 1 --// adjust for aux 
-				elseif op == 13 then --[[ GETTABLE ]]
-					stack[inst.A] = stack[inst.B][stack[inst.C]]
-				elseif op == 14 then --[[ SETTABLE ]]
-					stack[inst.B][stack[inst.C]] = stack[inst.A]
-				elseif op == 15 then --[[ GETTABLEKS ]]
-					local index = inst.K
-					stack[inst.A] = stack[inst.B][index]
-
-					pc += 1 --// adjust for aux 
-				elseif op == 16 then --[[ SETTABLEKS ]]
-					local index = inst.K
-					stack[inst.B][index] = stack[inst.A]
-
-					pc += 1 --// adjust for aux
-				elseif op == 17 then --[[ GETTABLEN ]]
-					stack[inst.A] = stack[inst.B][inst.C + 1]
-				elseif op == 18 then --[[ SETTABLEN ]]
-					stack[inst.B][inst.C + 1] = stack[inst.A]
-				elseif op == 19 then --[[ NEWCLOSURE ]]
-					local newPrototype = protolist[protos[inst.D + 1]]
-
-					local nups = newPrototype.nups
-					local upvalues = table_create(nups)
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
-
-					for i = 1, nups do
-						local pseudo = code[pc]
-
-						pc += 1
-
-						local type = pseudo.A
-
-						if type == 0 then --// value
-							local upvalue = {
-								value = stack[pseudo.B],
-								index = "value",--// self reference
-							}
-							upvalue.store = upvalue
-
-							upvalues[i] = upvalue
-						elseif type == 1 then --// reference
-							local index = pseudo.B
-							local prev = open_upvalues[index]
-
-							if prev == nil then
-								prev = {
-									index = index,
-									store = stack,
-								}
-								open_upvalues[index] = prev
+				elseif op <= 15 then
+					if op == 11 then --[[ CLOSEUPVALS ]]
+						for i, uv in open_upvalues do
+							if uv.index >= inst.A then
+								uv.value = uv.store[uv.index]
+								uv.store = uv
+								uv.index = "value" --// self reference
+								open_upvalues[i] = nil
 							end
+						end
+					elseif op == 12 then --[[ GETIMPORT ]]
+						local count = inst.KC
+						local k0 = inst.K0
+						local import = extensions[k0] or env[k0]
 
-							upvalues[i] = prev
-						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B + 1]
+						if count == 1 then
+							stack[inst.A] = import
+						elseif count == 2 then
+							stack[inst.A] = import[inst.K1]
+						elseif count == 3 then
+							stack[inst.A] = import[inst.K1][inst.K2]
+						end
+
+						pc += 1 --// adjust for aux 
+					elseif op == 13 then --[[ GETTABLE ]]
+						stack[inst.A] = stack[inst.B][stack[inst.C]]
+					elseif op == 14 then --[[ SETTABLE ]]
+						stack[inst.B][stack[inst.C]] = stack[inst.A]
+					else --[[ GETTABLEKS ]]
+						local index = inst.K
+						stack[inst.A] = stack[inst.B][index]
+
+						pc += 1 --// adjust for aux 
+					end
+				elseif op <= 20 then
+					if op == 16 then --[[ SETTABLEKS ]]
+						local index = inst.K
+						stack[inst.B][index] = stack[inst.A]
+	
+						pc += 1 --// adjust for aux
+					elseif op == 17 then --[[ GETTABLEN ]]
+						stack[inst.A] = stack[inst.B][inst.C + 1]
+					elseif op == 18 then --[[ SETTABLEN ]]
+						stack[inst.B][inst.C + 1] = stack[inst.A]
+					elseif op == 19 then --[[ NEWCLOSURE ]]
+						local newPrototype = protolist[protos[inst.D + 1]]
+	
+						local nups = newPrototype.nups
+						local upvalues = table_create(nups)
+						stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+	
+						for i = 1, nups do
+							local pseudo = code[pc]
+	
+							pc += 1
+	
+							local type = pseudo.A
+	
+							if type == 0 then --// value
+								local upvalue = {
+									value = stack[pseudo.B],
+									index = "value",--// self reference
+								}
+								upvalue.store = upvalue
+	
+								upvalues[i] = upvalue
+							elseif type == 1 then --// reference
+								local index = pseudo.B
+								local prev = open_upvalues[index]
+	
+								if prev == nil then
+									prev = {
+										index = index,
+										store = stack,
+									}
+									open_upvalues[index] = prev
+								end
+	
+								upvalues[i] = prev
+							elseif type == 2 then --// upvalue
+								upvalues[i] = upvals[pseudo.B + 1]
+							end
+						end
+					else --[[ NAMECALL ]]
+						local A = inst.A
+						local B = inst.B
+	
+						local kv = inst.K
+						
+						local sb = stack[B]
+	
+						stack[A + 1] = sb
+						
+						pc += 1 --// adjust for aux 
+						
+						local useFallback = true
+						
+						--// Special handling for native namecall behaviour
+						local useNativeHandler = luau_settings.useNativeNamecall
+	
+						if useNativeHandler then
+							local nativeNamecall = luau_settings.namecallHandler
+	
+							local callInst = code[pc]
+							local callOp = callInst.opcode
+	
+							--// Copied from the CALL handler under
+							local callA, callB, callC = callInst.A, callInst.B, callInst.C
+	
+							if stepHook then
+								stepHook(stack, debugging, proto, module, upvals)
+							end
+	
+							if interruptHook then
+								interruptHook(stack, debugging, proto, module, upvals)	
+							end
+	
+							local params = if callB == 0 then top - callA else callB - 1
+							local ret_list = table_pack(
+								nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params))
+							)
+	
+							if ret_list[1] == true then
+								useFallback = false
+								
+								pc += 1 --// Skip next CALL instruction
+	
+								inst = callInst
+								op = callOp
+								debugging.pc = pc
+								debugging.name = inst.opname
+	
+								table_remove(ret_list, 1)
+	
+								local ret_num = ret_list.n - 1
+	
+								if callC == 0 then
+									top = callA + ret_num - 1
+								else
+									ret_num = callC - 1
+								end
+	
+								table_move(ret_list, 1, ret_num, callA, stack)
+							end
+						end
+						
+						if useFallback then
+							stack[A] = sb[kv]
 						end
 					end
-				elseif op == 20 then --[[ NAMECALL ]]
-					local A = inst.A
-					local B = inst.B
-
-					local kv = inst.K
-					
-					local sb = stack[B]
-
-					stack[A + 1] = sb
-					
-					pc += 1 --// adjust for aux 
-					
-					local useFallback = true
-					
-					--// Special handling for native namecall behaviour
-					local useNativeHandler = luau_settings.useNativeNamecall
-
-					if useNativeHandler then
-						local nativeNamecall = luau_settings.namecallHandler
-
-						local callInst = code[pc]
-						local callOp = callInst.opcode
-
-						--// Copied from the CALL handler under
-						local callA, callB, callC = callInst.A, callInst.B, callInst.C
-
-						if stepHook then
-							stepHook(stack, debugging, proto, module, upvals)
-						end
-
+				elseif op <= 25 then
+					if op == 21 then --[[ CALL ]]
 						if interruptHook then
 							interruptHook(stack, debugging, proto, module, upvals)	
 						end
-
-						local params = if callB == 0 then top - callA else callB - 1
+	
+						local A, B, C = inst.A, inst.B, inst.C
+	
+						local params = if B == 0 then top - A else B - 1
+						local func = stack[A]
 						local ret_list = table_pack(
-							nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params))
+							func(table_unpack(stack, A + 1, A + params))
 						)
-
-						if ret_list[1] == true then
-							useFallback = false
-							
-							pc += 1 --// Skip next CALL instruction
-
-							inst = callInst
-							op = callOp
-							debugging.pc = pc
-							debugging.name = inst.opname
-
-							table_remove(ret_list, 1)
-
-							local ret_num = ret_list.n - 1
-
-							if callC == 0 then
-								top = callA + ret_num - 1
-							else
-								ret_num = callC - 1
+	
+						local ret_num = ret_list.n
+	
+						if C == 0 then
+							top = A + ret_num - 1
+						else
+							ret_num = C - 1
+						end
+	
+						table_move(ret_list, 1, ret_num, A, stack)
+					elseif op == 22 then --[[ RETURN ]]
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
+						end
+	
+						local A = inst.A
+						local B = inst.B 
+						local b = B - 1
+						local nresults
+	
+						if b == LUA_MULTRET then
+							nresults = top - A + 1
+						else
+							nresults = B - 1
+						end
+	
+						return table_unpack(stack, A, A + nresults - 1)
+					elseif op == 23 then --[[ JUMP ]]
+						pc += inst.D
+					elseif op == 24 then --[[ JUMPBACK ]]
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
+						end
+	
+						pc += inst.D
+					else --[[ JUMPIF ]]
+						if stack[inst.A] then
+							pc += inst.D
+						end
+					end
+				elseif op <= 30 then
+					if op == 26 then --[[ JUMPIFNOT ]]
+						if not stack[inst.A] then
+							pc += inst.D
+						end
+					elseif op == 27 then --[[ JUMPIFEQ ]]
+						if stack[inst.A] == stack[inst.aux] then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					elseif op == 28 then --[[ JUMPIFLE ]]
+						if stack[inst.A] <= stack[inst.aux] then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					elseif op == 29 then --[[ JUMPIFLT ]]
+						if stack[inst.A] < stack[inst.aux] then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					else --[[ JUMPIFNOTEQ ]]
+						if stack[inst.A] == stack[inst.aux] then
+							pc += 1
+						else
+							pc += inst.D
+						end
+					end
+				elseif op <= 35 then
+					if op == 31 then --[[ JUMPIFNOTLE ]]
+						if stack[inst.A] <= stack[inst.aux] then
+							pc += 1
+						else
+							pc += inst.D
+						end
+					elseif op == 32 then --[[ JUMPIFNOTLT ]]
+						if stack[inst.A] < stack[inst.aux] then
+							pc += 1
+						else
+							pc += inst.D
+						end
+					elseif op == 33 then --[[ ADD ]]
+						stack[inst.A] = stack[inst.B] + stack[inst.C]
+					elseif op == 34 then --[[ SUB ]]
+						stack[inst.A] = stack[inst.B] - stack[inst.C]
+					else --[[ MUL ]]
+						stack[inst.A] = stack[inst.B] * stack[inst.C]
+					end
+				elseif op <= 40 then
+					if op == 36 then --[[ DIV ]]
+						stack[inst.A] = stack[inst.B] / stack[inst.C]
+					elseif op == 37 then --[[ MOD ]]
+						stack[inst.A] = stack[inst.B] % stack[inst.C]
+					elseif op == 38 then --[[ POW ]]
+						stack[inst.A] = stack[inst.B] ^ stack[inst.C]
+					elseif op == 39 then --[[ ADDK ]]
+						stack[inst.A] = stack[inst.B] + inst.K
+					else --[[ SUBK ]]
+						stack[inst.A] = stack[inst.B] - inst.K
+					end
+				elseif op <= 45 then
+					if op == 41 then --[[ MULK ]]
+						stack[inst.A] = stack[inst.B] * inst.K
+					elseif op == 42 then --[[ DIVK ]]
+						stack[inst.A] = stack[inst.B] / inst.K
+					elseif op == 43 then --[[ MODK ]]
+						stack[inst.A] = stack[inst.B] % inst.K
+					elseif op == 44 then --[[ POWK ]]
+						stack[inst.A] = stack[inst.B] ^ inst.K
+					else --[[ AND ]]
+						local value = stack[inst.B]
+						if (not not value) == false then
+							stack[inst.A] = value
+						else
+							stack[inst.A] = stack[inst.C] or false
+						end
+					end
+				elseif op <= 50 then
+					if op == 46 then --[[ OR ]]
+						local value = stack[inst.B]
+						if (not not value) == true then
+							stack[inst.A] = value
+						else
+							stack[inst.A] = stack[inst.C] or false
+						end
+					elseif op == 47 then --[[ ANDK ]]
+						local value = stack[inst.B]
+						if (not not value) == false then
+							stack[inst.A] = value
+						else
+							stack[inst.A] = inst.K or false
+						end
+					elseif op == 48 then --[[ ORK ]]
+						local value = stack[inst.B]
+						if (not not value) == true then
+							stack[inst.A] = value
+						else
+							stack[inst.A] = inst.K or false
+						end
+					elseif op == 49 then --[[ CONCAT ]]
+						local s = ""
+						for i = inst.B, inst.C do
+							s ..= stack[i]
+						end
+						stack[inst.A] = s
+					else --[[ NOT ]]
+						stack[inst.A] = not stack[inst.B]
+					end
+				elseif op <= 55 then
+					if op == 51 then --[[ MINUS ]]
+						stack[inst.A] = -stack[inst.B]
+					elseif op == 52 then --[[ LENGTH ]]
+						stack[inst.A] = #stack[inst.B]
+					elseif op == 53 then --[[ NEWTABLE ]]
+						stack[inst.A] = table_create(inst.aux)
+	
+						pc += 1 --// adjust for aux 
+					elseif op == 54 then --[[ DUPTABLE ]]
+						local template = inst.K
+						local serialized = {}
+						for _, id in template do
+							serialized[constants[id + 1]] = nil
+						end
+						stack[inst.A] = serialized
+					else --[[ SETLIST ]]
+						local A = inst.A
+						local B = inst.B
+						local c = inst.C - 1
+	
+						if c == LUA_MULTRET then
+							c = top - B + 1
+						end
+	
+						table_move(stack, B, B + c - 1, inst.aux, stack[A])
+	
+						pc += 1 --// adjust for aux 
+					end
+				elseif op <= 60 then
+					if op == 56 then --[[ FORNPREP ]]
+						local A = inst.A
+	
+						local limit = stack[A]
+						if not ttisnumber(limit) then
+							local number = tonumber(limit)
+	
+							if number == nil then
+								error("invalid 'for' limit (number expected)")
 							end
-
-							table_move(ret_list, 1, ret_num, callA, stack)
+	
+							stack[A] = number
+							limit = number
 						end
-					end
-					
-					if useFallback then
-						stack[A] = sb[kv]
-					end
-				elseif op == 21 then --[[ CALL ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					local A, B, C = inst.A, inst.B, inst.C
-
-					local params = if B == 0 then top - A else B - 1
-					local func = stack[A]
-					local ret_list = table_pack(
-						func(table_unpack(stack, A + 1, A + params))
-					)
-
-					local ret_num = ret_list.n
-
-					if C == 0 then
-						top = A + ret_num - 1
-					else
-						ret_num = C - 1
-					end
-
-					table_move(ret_list, 1, ret_num, A, stack)
-				elseif op == 22 then --[[ RETURN ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					local A = inst.A
-					local B = inst.B 
-					local b = B - 1
-					local nresults
-
-					if b == LUA_MULTRET then
-						nresults = top - A + 1
-					else
-						nresults = B - 1
-					end
-
-					return table_unpack(stack, A, A + nresults - 1)
-				elseif op == 23 then --[[ JUMP ]]
-					pc += inst.D
-				elseif op == 24 then --[[ JUMPBACK ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					pc += inst.D
-				elseif op == 25 then --[[ JUMPIF ]]
-					if stack[inst.A] then
-						pc += inst.D
-					end
-				elseif op == 26 then --[[ JUMPIFNOT ]]
-					if not stack[inst.A] then
-						pc += inst.D
-					end
-				elseif op == 27 then --[[ JUMPIFEQ ]]
-					if stack[inst.A] == stack[inst.aux] then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 28 then --[[ JUMPIFLE ]]
-					if stack[inst.A] <= stack[inst.aux] then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 29 then --[[ JUMPIFLT ]]
-					if stack[inst.A] < stack[inst.aux] then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 30 then --[[ JUMPIFNOTEQ ]]
-					if stack[inst.A] == stack[inst.aux] then
-						pc += 1
-					else
-						pc += inst.D
-					end
-				elseif op == 31 then --[[ JUMPIFNOTLE ]]
-					if stack[inst.A] <= stack[inst.aux] then
-						pc += 1
-					else
-						pc += inst.D
-					end
-				elseif op == 32 then --[[ JUMPIFNOTLT ]]
-					if stack[inst.A] < stack[inst.aux] then
-						pc += 1
-					else
-						pc += inst.D
-					end
-				elseif op == 33 then --[[ ADD ]]
-					stack[inst.A] = stack[inst.B] + stack[inst.C]
-				elseif op == 34 then --[[ SUB ]]
-					stack[inst.A] = stack[inst.B] - stack[inst.C]
-				elseif op == 35 then --[[ MUL ]]
-					stack[inst.A] = stack[inst.B] * stack[inst.C]
-				elseif op == 36 then --[[ DIV ]]
-					stack[inst.A] = stack[inst.B] / stack[inst.C]
-				elseif op == 37 then --[[ MOD ]]
-					stack[inst.A] = stack[inst.B] % stack[inst.C]
-				elseif op == 38 then --[[ POW ]]
-					stack[inst.A] = stack[inst.B] ^ stack[inst.C]
-				elseif op == 39 then --[[ ADDK ]]
-					stack[inst.A] = stack[inst.B] + inst.K
-				elseif op == 40 then --[[ SUBK ]]
-					stack[inst.A] = stack[inst.B] - inst.K
-				elseif op == 41 then --[[ MULK ]]
-					stack[inst.A] = stack[inst.B] * inst.K
-				elseif op == 42 then --[[ DIVK ]]
-					stack[inst.A] = stack[inst.B] / inst.K
-				elseif op == 43 then --[[ MODK ]]
-					stack[inst.A] = stack[inst.B] % inst.K
-				elseif op == 44 then --[[ POWK ]]
-					stack[inst.A] = stack[inst.B] ^ inst.K
-				elseif op == 45 then --[[ AND ]]
-					local value = stack[inst.B]
-					stack[inst.A] = if value then stack[inst.C] or false else value
-				elseif op == 46 then --[[ OR ]]
-					local value = stack[inst.B]
-					stack[inst.A] = if value then value else stack[inst.C] or false
-				elseif op == 47 then --[[ ANDK ]]
-					local value = stack[inst.B]
-					stack[inst.A] = if value then inst.K or false else value
-				elseif op == 48 then --[[ ORK ]]
-					local value = stack[inst.B]
-					stack[inst.A] = if value then value else inst.K or false
-				elseif op == 49 then --[[ CONCAT ]]
-					local s = ""
-					for i = inst.B, inst.C do
-						s ..= stack[i]
-					end
-					stack[inst.A] = s
-				elseif op == 50 then --[[ NOT ]]
-					stack[inst.A] = not stack[inst.B]
-				elseif op == 51 then --[[ MINUS ]]
-					stack[inst.A] = -stack[inst.B]
-				elseif op == 52 then --[[ LENGTH ]]
-					stack[inst.A] = #stack[inst.B]
-				elseif op == 53 then --[[ NEWTABLE ]]
-					stack[inst.A] = table_create(inst.aux)
-
-					pc += 1 --// adjust for aux 
-				elseif op == 54 then --[[ DUPTABLE ]]
-					local template = inst.K
-					local serialized = {}
-					for _, id in template do
-						serialized[constants[id + 1]] = nil
-					end
-					stack[inst.A] = serialized
-				elseif op == 55 then --[[ SETLIST ]]
-					local A = inst.A
-					local B = inst.B
-					local c = inst.C - 1
-
-					if c == LUA_MULTRET then
-						c = top - B + 1
-					end
-
-					table_move(stack, B, B + c - 1, inst.aux, stack[A])
-
-					pc += 1 --// adjust for aux 
-				elseif op == 56 then --[[ FORNPREP ]]
-					local A = inst.A
-
-					local limit = stack[A]
-					if not ttisnumber(limit) then
-						local number = tonumber(limit)
-
-						if number == nil then
-							error("invalid 'for' limit (number expected)")
+	
+						local step = stack[A + 1]
+						if not ttisnumber(step) then
+							local number = tonumber(step)
+	
+							if number == nil then
+								error("invalid 'for' step (number expected)")
+							end
+	
+							stack[A + 1] = number
+							step = number
 						end
-
-						stack[A] = number
-						limit = number
-					end
-
-					local step = stack[A + 1]
-					if not ttisnumber(step) then
-						local number = tonumber(step)
-
-						if number == nil then
-							error("invalid 'for' step (number expected)")
+	
+						local index = stack[A + 2]
+						if not ttisnumber(index) then
+							local number = tonumber(index)
+	
+							if number == nil then
+								error("invalid 'for' index (number expected)")
+							end
+	
+							stack[A + 2] = number
+							index = number
 						end
-
-						stack[A + 1] = number
-						step = number
-					end
-
-					local index = stack[A + 2]
-					if not ttisnumber(index) then
-						local number = tonumber(index)
-
-						if number == nil then
-							error("invalid 'for' index (number expected)")
-						end
-
-						stack[A + 2] = number
-						index = number
-					end
-
-					if step > 0 then
-						if not (index <= limit) then
-							pc += inst.D
-						end
-					else
-						if not (limit <= index) then
-							pc += inst.D
-						end
-					end
-				elseif op == 57 then --[[ FORNLOOP ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					local A = inst.A
-					local limit = stack[A]
-					local step = stack[A + 1]
-					local index = stack[A + 2] + step
-
-					stack[A + 2] = index
-
-					if step > 0 then
-						if index <= limit then
-							pc += inst.D
-						end
-					else
-						if limit <= index then
-							pc += inst.D
-						end
-					end
-				elseif op == 58 then --[[ FORGLOOP ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					local A = inst.A
-					local res = inst.K
-
-					top = A + 6
-
-					local it = stack[A]
-
-					if (luau_settings.generalizedIteration == false) or ttisfunction(it) then 
-						local vals = { it(stack[A + 1], stack[A + 2]) }
-						table_move(vals, 1, res, A + 3, stack)
-
-						if stack[A + 3] ~= nil then
-							stack[A + 2] = stack[A + 3]
-							pc += inst.D
+	
+						if step > 0 then
+							if not (index <= limit) then
+								pc += inst.D
+							end
 						else
-							pc += 1
+							if not (limit <= index) then
+								pc += inst.D
+							end
 						end
-					else
-						local ok, vals = coroutine_resume(generalized_iterators[inst], it, stack[A + 1], stack[A + 2])
-						if not ok then
-							error(vals)
+					elseif op == 57 then --[[ FORNLOOP ]]
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
 						end
-						if vals == LUA_GENERALIZED_TERMINATOR then 
-							generalized_iterators[inst] = nil
-							pc += 1
+	
+						local A = inst.A
+						local limit = stack[A]
+						local step = stack[A + 1]
+						local index = stack[A + 2] + step
+	
+						stack[A + 2] = index
+	
+						if step > 0 then
+							if index <= limit then
+								pc += inst.D
+							end
 						else
+							if limit <= index then
+								pc += inst.D
+							end
+						end
+					elseif op == 58 then --[[ FORGLOOP ]]
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
+						end
+	
+						local A = inst.A
+						local res = inst.K
+	
+						top = A + 6
+	
+						local it = stack[A]
+	
+						if (luau_settings.generalizedIteration == false) or ttisfunction(it) then 
+							local vals = { it(stack[A + 1], stack[A + 2]) }
 							table_move(vals, 1, res, A + 3, stack)
-
-							stack[A + 2] = stack[A + 3]
-							pc += inst.D
-						end
-					end
-				elseif op == 59 then --[[ FORGPREP_INEXT ]]
-					if not ttisfunction(stack[inst.A]) then
-						error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_INEXT encountered non-function value
-					end
-
-					pc += inst.D
-				elseif op == 61 then --[[ FORGPREP_NEXT ]]
-					if not ttisfunction(stack[inst.A]) then
-						error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_NEXT encountered non-function value
-					end
-
-					pc += inst.D
-				elseif op == 63 then --[[ GETVARARGS ]]
-					local A = inst.A
-					local b = inst.B - 1
-
-					if b == LUA_MULTRET then
-						b = varargs.len
-						top = A + b - 1
-					end
-
-					table_move(varargs.list, 1, b, A, stack)
-				elseif op == 64 then --[[ DUPCLOSURE ]]
-					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
-
-					local nups = newPrototype.nups
-					local upvalues = table_create(nups)
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
-
-					for i = 1, nups do
-						local pseudo = code[pc]
-						pc += 1
-
-						local type = pseudo.A
-						if type == 0 then --// value
-							local upvalue = {
-								value = stack[pseudo.B],
-								index = "value",--// self reference
-							}
-							upvalue.store = upvalue
-
-							upvalues[i] = upvalue
-
-							--// references dont get handled by DUPCLOSURE
-						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B + 1]
-						end
-					end
-				elseif op == 65 then --[[ PREPVARARGS ]]
-					--[[ Handled by wrapper ]]
-				elseif op == 66 then --[[ LOADKX ]]
-					local kv = inst.K
-					stack[inst.A] = kv
-
-					pc += 1 --// adjust for aux 
-				elseif op == 67 then --[[ JUMPX ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)	
-					end
-
-					pc += inst.E
-				elseif op == 68 then --[[ FASTCALL ]]
-					--[[ Skipped ]]
-				elseif op == 69 then --[[ COVERAGE ]]
-					inst.E += 1
-				elseif op == 70 then --[[ CAPTURE ]]
-					--[[ Handled by CLOSURE ]]
-					error("encountered unhandled CAPTURE")
-				elseif op == 71 then --[[ SUBRK ]]
-					stack[inst.A] = inst.K - stack[inst.C]
-				elseif op == 72 then --[[ DIVRK ]]
-					stack[inst.A] = inst.K / stack[inst.C]
-				elseif op == 73 then --[[ FASTCALL1 ]]
-					--[[ Skipped ]]
-				elseif op == 74 then --[[ FASTCALL2 ]]
-					--[[ Skipped ]]
-					pc += 1 --// adjust for aux
-				elseif op == 75 then --[[ FASTCALL2K ]]
-					--[[ Skipped ]]
-					pc += 1 --// adjust for aux
-				elseif op == 76 then --[[ FORGPREP ]]
-					local iterator = stack[inst.A]
-
-					if luau_settings.generalizedIteration and not ttisfunction(iterator) then
-						local loopInstruction = code[pc + inst.D]
-						if generalized_iterators[loopInstruction] == nil then 
-							local function gen_iterator(...)
-								for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in ... do 
-									coroutine_yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
-								end
-
-								coroutine_yield(LUA_GENERALIZED_TERMINATOR)
+	
+							if stack[A + 3] ~= nil then
+								stack[A + 2] = stack[A + 3]
+								pc += inst.D
+							else
+								pc += 1
 							end
-
-							generalized_iterators[loopInstruction] = coroutine_create(gen_iterator)
+						else
+							local ok, vals = coroutine_resume(generalized_iterators[inst], it, stack[A + 1], stack[A + 2])
+							if not ok then
+								error(vals)
+							end
+							if vals == LUA_GENERALIZED_TERMINATOR then 
+								generalized_iterators[inst] = nil
+								pc += 1
+							else
+								table_move(vals, 1, res, A + 3, stack)
+	
+								stack[A + 2] = stack[A + 3]
+								pc += inst.D
+							end
+						end
+					else --[[ FORGPREP_INEXT ]]
+						if not ttisfunction(stack[inst.A]) then
+							error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_INEXT encountered non-function value
+						end
+	
+						pc += inst.D
+					end
+				elseif op <= 65 then
+					if op == 61 then --[[ FORGPREP_NEXT ]]
+						if not ttisfunction(stack[inst.A]) then
+							error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_NEXT encountered non-function value
+						end
+	
+						pc += inst.D
+					elseif op == 63 then --[[ GETVARARGS ]]
+						local A = inst.A
+						local b = inst.B - 1
+	
+						if b == LUA_MULTRET then
+							b = varargs.len
+							top = A + b - 1
+						end
+	
+						table_move(varargs.list, 1, b, A, stack)
+					elseif op == 64 then --[[ DUPCLOSURE ]]
+						local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
+	
+						local nups = newPrototype.nups
+						local upvalues = table_create(nups)
+						stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+	
+						for i = 1, nups do
+							local pseudo = code[pc]
+							pc += 1
+	
+							local type = pseudo.A
+							if type == 0 then --// value
+								local upvalue = {
+									value = stack[pseudo.B],
+									index = "value",--// self reference
+								}
+								upvalue.store = upvalue
+	
+								upvalues[i] = upvalue
+	
+								--// references dont get handled by DUPCLOSURE
+							elseif type == 2 then --// upvalue
+								upvalues[i] = upvals[pseudo.B + 1]
+							end
+						end
+					else --[[ PREPVARARGS ]]
+						--[[ Handled by wrapper ]]
+					end
+				elseif op <= 70 then
+					if op == 66 then --[[ LOADKX ]]
+						local kv = inst.K
+						stack[inst.A] = kv
+	
+						pc += 1 --// adjust for aux 
+					elseif op == 67 then --[[ JUMPX ]]
+						if interruptHook then
+							interruptHook(stack, debugging, proto, module, upvals)	
+						end
+	
+						pc += inst.E
+					elseif op == 68 then --[[ FASTCALL ]]
+						--[[ Skipped ]]
+					else --[[ CAPTURE ]]
+						--[[ Handled by CLOSURE ]]
+						error("encountered unhandled CAPTURE")
+					end
+				elseif op <= 75 then
+					if op == 71 then --[[ SUBRK ]]
+						stack[inst.A] = inst.K - stack[inst.C]
+					elseif op == 72 then --[[ DIVRK ]]
+						stack[inst.A] = inst.K / stack[inst.C]
+					elseif op == 73 then --[[ FASTCALL1 ]]
+						--[[ Skipped ]]
+					elseif op == 74 then --[[ FASTCALL2 ]]
+						--[[ Skipped ]]
+						pc += 1 --// adjust for aux
+					else --[[ FASTCALL2K ]]
+						--[[ Skipped ]]
+						pc += 1 --// adjust for aux
+					end
+				elseif op <= 80 then
+					if op == 76 then --[[ FORGPREP ]]
+						local iterator = stack[inst.A]
+	
+						if luau_settings.generalizedIteration and not ttisfunction(iterator) then
+							local loopInstruction = code[pc + inst.D]
+							if generalized_iterators[loopInstruction] == nil then 
+								local function gen_iterator(...)
+									for r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200 in ... do 
+										coroutine_yield({r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r53, r54, r55, r56, r57, r58, r59, r60, r61, r62, r63, r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74, r75, r76, r77, r78, r79, r80, r81, r82, r83, r84, r85, r86, r87, r88, r89, r90, r91, r92, r93, r94, r95, r96, r97, r98, r99, r100, r101, r102, r103, r104, r105, r106, r107, r108, r109, r110, r111, r112, r113, r114, r115, r116, r117, r118, r119, r120, r121, r122, r123, r124, r125, r126, r127, r128, r129, r130, r131, r132, r133, r134, r135, r136, r137, r138, r139, r140, r141, r142, r143, r144, r145, r146, r147, r148, r149, r150, r151, r152, r153, r154, r155, r156, r157, r158, r159, r160, r161, r162, r163, r164, r165, r166, r167, r168, r169, r170, r171, r172, r173, r174, r175, r176, r177, r178, r179, r180, r181, r182, r183, r184, r185, r186, r187, r188, r189, r190, r191, r192, r193, r194, r195, r196, r197, r198, r199, r200})
+									end
+	
+									coroutine_yield(LUA_GENERALIZED_TERMINATOR)
+								end
+	
+								generalized_iterators[loopInstruction] = coroutine_create(gen_iterator)
+							end
+						end
+	
+						pc += inst.D
+					elseif op == 77 then --[[ JUMPXEQKNIL ]]
+						local kn = inst.KN
+	
+						if (stack[inst.A] == nil) ~= kn then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					elseif op == 78 then --[[ JUMPXEQKB ]]
+						local kv = inst.K
+						local kn = inst.KN
+						local ra = stack[inst.A]
+	
+						if (ttisboolean(ra) and (ra == kv)) ~= kn then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					elseif op == 79 then --[[ JUMPXEQKN ]]
+						local kv = inst.K
+						local kn = inst.KN
+						local ra = stack[inst.A]
+	
+						if (ra == kv) ~= kn then
+							pc += inst.D
+						else
+							pc += 1
+						end
+					else --[[ JUMPXEQKS ]]
+						local kv = inst.K
+						local kn = inst.KN
+						local ra = stack[inst.A]
+	
+						if (ra == kv) ~= kn then
+							pc += inst.D
+						else
+							pc += 1
 						end
 					end
-
-					pc += inst.D
-				elseif op == 77 then --[[ JUMPXEQKNIL ]]
-					local kn = inst.KN
-
-					if (stack[inst.A] == nil) ~= kn then
-						pc += inst.D
-					else
-						pc += 1
+				elseif op <= 85 then
+					if op == 81 then --[[ IDIV ]]
+						stack[inst.A] = stack[inst.B] // stack[inst.C]
+					else --[[ IDIVK ]]
+						stack[inst.A] = stack[inst.B] // inst.K
 					end
-				elseif op == 78 then --[[ JUMPXEQKB ]]
-					local kv = inst.K
-					local kn = inst.KN
-					local ra = stack[inst.A]
-
-					if (ttisboolean(ra) and (ra == kv)) ~= kn then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 79 then --[[ JUMPXEQKN ]]
-					local kv = inst.K
-					local kn = inst.KN
-					local ra = stack[inst.A]
-
-					if (ra == kv) ~= kn then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 80 then --[[ JUMPXEQKS ]]
-					local kv = inst.K
-					local kn = inst.KN
-					local ra = stack[inst.A]
-
-					if (ra == kv) ~= kn then
-						pc += inst.D
-					else
-						pc += 1
-					end
-				elseif op == 81 then --[[ IDIV ]]
-					stack[inst.A] = stack[inst.B] // stack[inst.C]
-				elseif op == 82 then --[[ IDIVK ]]
-					stack[inst.A] = stack[inst.B] // inst.K
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end

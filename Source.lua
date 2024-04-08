@@ -1180,7 +1180,11 @@ local function luau_load(module, env, luau_settings)
 						pc += inst.E
 					elseif op == 68 then --[[ FASTCALL ]]
 						--[[ Skipped ]]
-					else --[[ CAPTURE ]]
+					elseif op == 69 then
+						-- [[ COVERAGE -- ]]
+						inst.E += 1
+					else 
+						--[[ CAPTURE ]]
 						--[[ Handled by CLOSURE ]]
 						error("encountered unhandled CAPTURE")
 					end

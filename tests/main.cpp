@@ -85,15 +85,15 @@ TestCompileResult compileTest(string source, Luau::CompileOptions opts, const ch
 		if (codegen)
 		{
 			Luau::CodeGen::CompilationStats nativeStats;
-			Luau::CodeGen::CodeGenCompilationResult result = Luau::CodeGen::compile(L, -1, Luau::CodeGen::CodeGen_ColdFunctions, &nativeStats);
-			if (result != Luau::CodeGen::CodeGenCompilationResult::Success || nativeStats.functionsCompiled == 0)
+			Luau::CodeGen::CompilationResult compResult = Luau::CodeGen::compile(L, -1, Luau::CodeGen::CodeGen_ColdFunctions, &nativeStats);
+			if (compResult.hasErrors() || nativeStats.functionsCompiled == 0)
 			{
 				lua_close(L);
 				string reason;
-				if (result == Luau::CodeGen::CodeGenCompilationResult::Success)
+				if (compResult.result == Luau::CodeGen::CodeGenCompilationResult::Success)
 					reason = "No functions compiled";
 				else
-					switch (result)
+					switch (compResult.result)
 					{
 					case Luau::CodeGen::CodeGenCompilationResult::NothingToCompile:
 						reason = "Nothing To Compile";
@@ -378,8 +378,8 @@ bool loadFiuCodeGen(lua_State* L)
 	{
 		if (fiuSupportsCodeGen)
 		{
-			Luau::CodeGen::CodeGenCompilationResult result = Luau::CodeGen::compile(ML, -1, Luau::CodeGen::CodeGen_ColdFunctions);
-			codegen = result == Luau::CodeGen::CodeGenCompilationResult::Success;
+			Luau::CodeGen::CompilationResult compResult = Luau::CodeGen::compile(ML, -1, Luau::CodeGen::CodeGen_ColdFunctions);
+			codegen = !compResult.hasErrors();
 		}
 		if (coverageActive())
 			coverageTrack(ML, -1);

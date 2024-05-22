@@ -3,6 +3,7 @@
 #include "luau/CLI/Coverage.h"
 #include "Luau/Compiler.h"
 #include "Luau/CodeGen.h"
+#include "Luau/ExperimentalFlags.h"
 
 #include "Config.h"
 
@@ -247,6 +248,16 @@ static int lua_collectgarbage(lua_State* L)
 	}
 
 	luaL_error(L, "collectgarbage must be called with 'count' or 'collect'");
+}
+
+// Ref: https://github.com/luau-lang/luau/blob/c73ecd8e08c488acd22db9f04c8935471d170e37/CLI/Flags.cpp#L31-L36
+void setLuauFlagsDefault()
+{
+	for (Luau::FValue<bool>* flag = Luau::FValue<bool>::list; flag; flag = flag->next)
+		if (strncmp(flag->name, "Luau", 4) == 0 && !Luau::isFlagExperimental(flag->name)) {
+			flag->value = true;
+			printf("[%s] Flag '%s' set to true\n", SUCCESS_SYMBOL, flag->name);
+		}
 }
 
 int testOk(lua_State* L)
@@ -845,6 +856,11 @@ int main(int argc, char* argv[])
 			i++;
 			const char* vectorType = argv[i];
 			globalOptions.vectorType = vectorType;
+		}
+		else if (strcmp(argv[i], "-defaultflags") == 0)
+		{
+			i++;
+			setLuauFlagsDefault();
 		}
 		else
 		{

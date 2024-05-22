@@ -71,6 +71,12 @@ static Luau::CompileOptions compleOptions()
 
 string fiuBytecode;
 bool fiuSupportsCodeGen = false;
+bool fiuRunSupported = false;
+const char* const fiuUnsupportedFlags[] = {
+	"LuauFastCrossTableMove",
+	"LuauCompileTypeInfo",
+	"LuauCompileNoJumpLineRetarget",
+};
 
 TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled", bool codegen = false)
 {
@@ -250,11 +256,23 @@ static int lua_collectgarbage(lua_State* L)
 	luaL_error(L, "collectgarbage must be called with 'count' or 'collect'");
 }
 
+bool isFiuSupported(const char* flag)
+{
+	if (!fiuRunSupported)
+		return true;
+	for (const char* item : fiuUnsupportedFlags) {
+		if (item && strcmp(item, flag) == 0)
+			return false;
+	}
+
+	return true;
+}
+
 // Ref: https://github.com/luau-lang/luau/blob/c73ecd8e08c488acd22db9f04c8935471d170e37/CLI/Flags.cpp#L31-L36
 void setLuauFlagsDefault()
 {
 	for (Luau::FValue<bool>* flag = Luau::FValue<bool>::list; flag; flag = flag->next)
-		if (strncmp(flag->name, "Luau", 4) == 0 && !Luau::isFlagExperimental(flag->name)) {
+		if (strncmp(flag->name, "Luau", 4) == 0 && !Luau::isFlagExperimental(flag->name) && isFiuSupported(flag->name)) {
 			flag->value = true;
 			printf("[%s] Flag '%s' set to true\n", SUCCESS_SYMBOL, flag->name);
 		}
@@ -859,8 +877,11 @@ int main(int argc, char* argv[])
 		}
 		else if (strcmp(argv[i], "-defaultflags") == 0)
 		{
-			i++;
 			setLuauFlagsDefault();
+		}
+		else if (strcmp(argv[i], "-fiureadyflags") == 0)
+		{
+			fiuRunSupported = true;
 		}
 		else
 		{

@@ -32,3 +32,7 @@ jobs:
       - name: Run tests
         run: |
           ./build/fiu-tests -O2 -D2
+
+      - name: Run tests with Fiu Ready DefaultFlags
+        run: |
+          ./build/fiu-tests -O2 -D2 -fiureadyflags -defaultflags

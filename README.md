@@ -7,7 +7,7 @@ Fiu does not taint the environment if you pass a table of functions or a wrapper
 # Usage
 Fiu can be downloaded from the [releases page](https://github.com/rce-incorporated/Fiu/releases) and the experimental version from [here](https://github.com/rce-incorporated/Fiu/tree/experimental).
 
-- `luau_load(module | bytecode, env, settings?)` <div>Accepts a luau module or bytecode. Returns the main prototype wrapped and a `luau_close` function to kill the interpreter if needed.</div>
+- `luau_load(module | bytecode, env, settings?)` <div>Accepts a Luau module or bytecode. Returns the main prototype wrapped and a `luau_close` function to kill the interpreter if needed.</div>
 - `luau_deserialize(bytecode, settings?)` <div>Used to deserialise bytecode.</div>
 - `luau_newsettings()` <div>Used to create a table of default settings.</div>
 - `luau_validatesettings(settings)` <div>Used to validate the passed settings.</div>

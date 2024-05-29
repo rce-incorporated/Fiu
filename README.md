@@ -18,7 +18,7 @@ Fiu can be downloaded from the [releases page](https://github.com/rce-incorporat
 `vectorSize` - Vector size  
 `useNativeNamecall` - Boolean to indicate if `namecallHandler` should be used  
 `namecallHandler` - Function handler for native namecalling  
-`extensions` - Table of injectable globals
+`extensions` - Table of injectable globals  
 `callHooks` - VM callback behaviour emulators  
 `errorHandling` - Error handling by the VM for line information and opcode information  
 `generalizedIteration` - Use generalized iteration in the VM  
@@ -95,7 +95,7 @@ end
   - Fork this repository, and commit your changes.
   - Commiting changes should automatically run tests with `GitHub Actions`.
   - Results would show for the commit.
-- Testing locally(optional)
+- Testing locally (optional)
   - `fiu-tests` must be compiled using CMake, this is needed to run and debug tests.
     - Setup cmake tree with `cmake ./tests` or `cmake -DCMAKE_BUILD_TYPE=Release ./tests` for release tree.
     - Compile cmake tree with `cmake --build . --target=fiu-tests`.

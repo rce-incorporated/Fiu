@@ -22,6 +22,8 @@ Fiu can be downloaded from the [releases page](https://github.com/rce-incorporat
 `callHooks` - VM callback behaviour emulators  
 `errorHandling` - Error handling by the VM for line information and opcode information  
 `generalizedIteration` - Use generalized iteration in the VM  
+`staticEnvironment` - Table of globals for option `useImportConstants`  
+`useImportConstants` - Boolean to indicate if fiu should optimize `GETIMPORT` using `staticEnvironment`
 
 ### Vector constant support
 

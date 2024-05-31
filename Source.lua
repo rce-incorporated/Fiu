@@ -178,13 +178,20 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
 end
 
+local function assertImport(import, message)
+	if import == nil then
+		error(message, 0)
+	end
+	return import
+end
+
 local function resolveImportConstant(static, count, k0, k1, k2)
 	if count == 1 then
-		return static[k0]
+		return assertImport(static[k0], `Could not resolve import constant: {k0}\nMake sure the import is defined in staticEnvironment.`)
 	elseif count == 2 then
-		return static[k0][k1]
+		return assertImport(static[k0][k1], `Could not resolve import constant: {k0}.{k1}\nMake sure the import is defined in staticEnvironment.`)
 	elseif count == 3 then
-		return static[k0][k1][k2]
+		return assertImport(static[k0][k1][k2], `Could not resolve import constant: {k0}.{k1}.{k2}\nMake sure the import is defined in staticEnvironment.`)
 	end
 	return error(`Could not resolve import constant, unknown size: {count}`)
 end

@@ -54,4 +54,11 @@ assert(calledConstants.A, "A was not called")
 assert(calledConstants.B, "B was not called")
 assert(calledConstants.C, "C was not called")
 
+settings.staticEnvironment = {}
+
+local success, message = pcall(Fiu.luau_deserialize, compileResult, settings)
+
+assert(success == false, "luau_deserialize should have errored")
+assert(MATCH(message, "Could not resolve import constant: A\nMake sure the import is defined in staticEnvironment."))
+
 OK()

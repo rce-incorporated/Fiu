@@ -142,6 +142,7 @@ FIU_TESTCASES {
 		"Specs/extensions",
 		"Specs/nativeNamecall",
 		"Specs/vectorLib",
+		"Specs/importConstants",
 	}},
 	{"Benchmarks", {
 		// Fiu Benchmark Tests

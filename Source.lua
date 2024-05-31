@@ -158,7 +158,9 @@ local function luau_newsettings()
 		errorHandling = true,
 		generalizedIteration = true,
 		allowProxyErrors = false,
-	}	
+		useImportConstants = false,
+		staticEnvironment = {},
+	}
 end
 
 local function luau_validatesettings(luau_settings)
@@ -172,6 +174,26 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.errorHandling) == "boolean", "luau_settings.errorHandling should be a boolean")
 	assert(type(luau_settings.generalizedIteration) == "boolean", "luau_settings.generalizedIteration should be a boolean")
 	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
+	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
+	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
+end
+
+local function assertImport(import, message)
+	if import == nil then
+		error(message, 0)
+	end
+	return import
+end
+
+local function resolveImportConstant(static, count, k0, k1, k2)
+	if count == 1 then
+		return assertImport(static[k0], `Could not resolve import constant: {k0}\nMake sure the import is defined in staticEnvironment.`)
+	elseif count == 2 then
+		return assertImport(static[k0][k1], `Could not resolve import constant: {k0}.{k1}\nMake sure the import is defined in staticEnvironment.`)
+	elseif count == 3 then
+		return assertImport(static[k0][k1][k2], `Could not resolve import constant: {k0}.{k1}.{k2}\nMake sure the import is defined in staticEnvironment.`)
+	end
+	return error(`Could not resolve import constant, unknown size: {count}`)
 end
 
 local function luau_deserialize(bytecode, luau_settings)
@@ -326,6 +348,12 @@ local function luau_deserialize(bytecode, luau_settings)
 
 				inst.K1 = k[id1 + 1]
 				inst.K2 = k[id2 + 1]
+			end
+			if luau_settings.useImportConstants then
+				inst.K = resolveImportConstant(
+					luau_settings.staticEnvironment,
+					count, inst.K0, inst.K1, inst.K2
+				)
 			end
 		elseif kmode == 5 then --// AUX boolean low 1 bit
 			inst.K = bit32_extract(inst.aux, 0, 1) == 1
@@ -642,16 +670,19 @@ local function luau_load(module, env, luau_settings)
 						end
 					end
 				elseif op == 12 then --[[ GETIMPORT ]]
-					local count = inst.KC
-					local k0 = inst.K0
-					local import = extensions[k0] or env[k0]
-
-					if count == 1 then
-						stack[inst.A] = import
-					elseif count == 2 then
-						stack[inst.A] = import[inst.K1]
-					elseif count == 3 then
-						stack[inst.A] = import[inst.K1][inst.K2]
+					if luau_settings.useImportConstants then
+						stack[inst.A] = inst.K
+					else
+						local count = inst.KC
+						local k0 = inst.K0
+						local import = extensions[k0] or env[k0]
+						if count == 1 then
+							stack[inst.A] = import
+						elseif count == 2 then
+							stack[inst.A] = import[inst.K1]
+						elseif count == 3 then
+							stack[inst.A] = import[inst.K1][inst.K2]
+						end
 					end
 
 					pc += 1 --// adjust for aux 

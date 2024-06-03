@@ -21,6 +21,7 @@ local coroutine_resume = coroutine.resume
 local coroutine_close = coroutine.close
 
 local buffer_fromstring = buffer.fromstring
+local buffer_len = buffer.len
 local buffer_readu8 = buffer.readu8
 local buffer_readu32 = buffer.readu32
 local buffer_readstring = buffer.readstring
@@ -198,7 +199,7 @@ local function luau_deserialize(bytecode, luau_settings)
 		luau_validatesettings(luau_settings)
 	end
 
-	local stream = buffer_fromstring(bytecode)
+	local stream = if type(bytecode) == "string" then buffer_fromstring(bytecode) else bytecode
 	local cursor = 0
 
 	local function readByte()
@@ -530,7 +531,7 @@ local function luau_deserialize(bytecode, luau_settings)
 
 	local mainProto = protoList[readVarInt() + 1]
 
-	assert(cursor == #bytecode, "deserializer cursor position mismatch")
+	assert(cursor == buffer_len(stream), "deserializer cursor position mismatch")
 
 	mainProto.debugname = "(main)"
 
@@ -551,7 +552,7 @@ local function luau_load(module, env, luau_settings)
 		luau_validatesettings(luau_settings)
 	end
 
-	if type(module) == "string" then
+	if type(module) ~= "table" then
 		module = luau_deserialize(module, luau_settings)
 	end
 

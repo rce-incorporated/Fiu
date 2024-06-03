@@ -529,7 +529,7 @@ local function luau_load(module, env, luau_settings)
 		luau_validatesettings(luau_settings)
 	end
 
-	if not (type(module) == "table") then
+	if type(module) ~= "table" then
 		module = luau_deserialize(module, luau_settings)
 	end
 

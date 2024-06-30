@@ -120,7 +120,7 @@ local opList = {
 	{ "FORNLOOP", 4, 0, false },
 	{ "FORGLOOP", 4, 8, true },
 	{ "FORGPREP_INEXT", 4, 0, false },
-	{ "DEP_FORGLOOP_INEXT", 0, 0, false },
+	{ "FASTCALL3", 3, 1, true },
 	{ "FORGPREP_NEXT", 4, 0, false },
 	{ "DEP_FORGLOOP_NEXT", 0, 0, false },
 	{ "GETVARARGS", 2, 0, false },
@@ -257,7 +257,7 @@ local function luau_deserialize(bytecode, luau_settings)
 	local typesVersion = 0
 	if luauVersion == 0 then
 		error("the provided bytecode is an error message",0)
-	elseif luauVersion < 3 or luauVersion > 5 then
+	elseif luauVersion < 3 or luauVersion > 6 then
 		error("the version of the provided bytecode is unsupported",0)
 	elseif luauVersion >= 4 then
 		typesVersion = readByte()
@@ -521,6 +521,8 @@ local function luau_deserialize(bytecode, luau_settings)
 			bytecodeid = bytecodeid;
 		}
 	end
+	
+	_ = readVarInt() -- TODO: figure out wtf this is
 
 	local protoCount = readVarInt()
 	local protoList = table_create(protoCount)
@@ -1079,6 +1081,9 @@ local function luau_load(module, env, luau_settings)
 					end
 
 					pc += inst.D
+				elseif op == 60 then --[[ FASTCALL3 ]]
+					--[[ Skipped ]]
+					pc += 1 --// adjust for aux
 				elseif op == 61 then --[[ FORGPREP_NEXT ]]
 					if not ttisfunction(stack[inst.A]) then
 						error(string_format("attempt to iterate over a %s value", type(stack[inst.A]))) -- FORGPREP_NEXT encountered non-function value

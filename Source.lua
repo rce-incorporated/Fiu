@@ -498,7 +498,16 @@ local function luau_deserialize(bytecode, luau_settings)
 		}
 	end
 	
-	_ = readVarInt() -- TODO: figure out wtf this is
+	-- userdataRemapping (not used in VM, left unused)
+	if typesVersion == 3 then
+		local index = readByte()
+
+		while index ~= 0 do
+			readString()
+
+			index = readByte()
+		end
+	end
 
 	local protoCount = readVarInt()
 	local protoList = table_create(protoCount)

@@ -77,6 +77,9 @@ const char* const fiuUnsupportedFlags[] = {
 	"LuauCompileTypeInfo",
 	"LuauCompileNoJumpLineRetarget",
 };
+const char* const fiuUnsupportedExperimentalTests[] = {
+	"Conformance/Deserializer",
+};
 
 TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled", bool codegen = false)
 {
@@ -882,6 +885,28 @@ int main(int argc, char* argv[])
 		else if (strcmp(argv[i], "-fiureadyflags") == 0)
 		{
 			fiuRunSupported = true;
+			std::map<std::string, std::vector<std::string>> filteredTestCases;
+			for (const auto& section : TestCases)
+			{
+				std::vector<std::string> filteredTestFiles;
+				for (const string& file : section.second)
+				{
+					bool supported = true;
+					for (const char* item : fiuUnsupportedExperimentalTests)
+					{
+						if (file.find(item) != string::npos)
+						{
+							supported = false;
+							break;
+						}
+					};
+					if (supported)
+						filteredTestFiles.push_back(file);
+				}
+				filteredTestCases.insert(pair(section.first, filteredTestFiles));
+			}
+
+			TestCases = filteredTestCases;
 		}
 		else
 		{

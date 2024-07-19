@@ -40,8 +40,6 @@ local ttisstring = function(v) return type(v) == "string" end
 local ttisboolean = function(v) return type(v) == "boolean" end
 local ttisfunction = function(v) return type(v) == "function" end
 
-local int_cast = function(n) return n % (2 ^ 32) end
-
 -- // opList contains information about the instruction, each instruction is defined in this format:
 -- // {OP_NAME, OP_MODE, K_MODE, HAS_AUX}
 -- // OP_MODE specifies what type of registers the instruction uses if any
@@ -474,7 +472,7 @@ local function luau_deserialize(bytecode, luau_settings)
 			local lastline = 0
 			for j = 1, intervals do
 				lastline += readWord()
-				abslineinfo[j] = int_cast(lastline)
+				abslineinfo[j] = lastline % (2 ^ 32)
 			end
 
 			instructionlineinfo = table_create(sizecode)

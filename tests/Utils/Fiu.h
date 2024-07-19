@@ -48,7 +48,7 @@ vector<string> fiuProtoField = {
 	"debugname", "sizecode", "sizek",
 	"sizep", "protos",
 	"lineinfoenabled", "instructionlineinfo",
-	"code",
+	"code", // "debugcode" is part of "code"
 };
 
 vector<string> fiuCodeField = {
@@ -257,7 +257,7 @@ void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 		else if (
 			field == "debugname" || field == "isvararg" ||
 			field == "protos" || field == "code" ||
-			field == "lineinfoenabled" || field == "instructionlineinfo"
+			field == "lineinfoenabled" || field == "instructionlineinfo" 
 		)
 		{
 			if (field == "isvararg")
@@ -305,6 +305,29 @@ void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 					
 					idx++;
 				}
+
+				lua_newtable(L); // debugcode
+				lua_pushvalue(L, -2); // codeList
+				lua_pushnil(L);
+				idx = 1;
+				while (lua_next(L, -2) != 0)
+				{
+					luaL_checktype(L, -1, LUA_TTABLE);
+					int t = lua_getfield(L, -1, "opcode");
+					if (t != LUA_TNIL)
+					{
+						luaL_checktype(L, -1, LUA_TNUMBER);
+						lua_rawseti(L, -5, idx); // output number -> debugcode[idx]
+						lua_pop(L, 1);
+					}
+					else
+						lua_pop(L, 2); // nil, likely AUX
+					idx++;
+				}
+				luaL_checktype(L, -1, LUA_TTABLE);
+				lua_pushvalue(L, -2);
+				lua_setfield(L, -5, "debugcode");
+				lua_pop(L, 2); // pops: debugcode, codeList<stack ref>
 			}
 			else if (field == "lineinfoenabled")
 			{
@@ -456,7 +479,7 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 		}
 		if (
 			field == "debugname" || field == "isvararg" ||
-			field == "protos" || field == "code" ||
+			field == "protos" || field == "code" || field == "debugcode" ||
 			field == "lineinfoenabled" || field == "instructionlineinfo"
 		)
 		{

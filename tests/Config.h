@@ -105,6 +105,7 @@ FIU_TESTCASES {
 		"Staging/Issues/5",
 		"Staging/Issues/14",
 		"Staging/Issues/16",
+		"Staging/Issues/34",
 
 		// Original FIU tests
 		"Staging/AndOr",

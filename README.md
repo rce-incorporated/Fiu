@@ -106,12 +106,8 @@ end
 
 <div>Luau updates often and Fiu will need to be updated and have working releases added for every new bytecode version.</div>  
   
-### Contributors
+### Maintainers
   
 [TheGreatSageEqualToHeaven](https://github.com/TheGreatSageEqualToHeaven/)  
-[Rerumu](https://github.com/Rerumu/)  
 [Green](https://github.com/green-real/)  
 [SnorlaxAssist](https://github.com/Snorlaxassist)  
-[Someon1e](https://github.com/Someon1e)  
-[arcturus-prime](https://github.com/arcturus-prime)  
-[SnowyShiro](https://github.com/SnowyShiro)  

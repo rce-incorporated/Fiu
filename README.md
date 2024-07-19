@@ -23,7 +23,8 @@ Fiu can be downloaded from the [releases page](https://github.com/rce-incorporat
 `errorHandling` - Error handling by the VM for line information and opcode information  
 `generalizedIteration` - Use generalized iteration in the VM  
 `staticEnvironment` - Table of globals for option `useImportConstants`  
-`useImportConstants` - Boolean to indicate if fiu should optimize `GETIMPORT` using `staticEnvironment`
+`useImportConstants` - Boolean to indicate if fiu should optimize `GETIMPORT` using `staticEnvironment`  
+`decodeOp` - Function that passes an `op` argument, which is the instruction number and can be processed for any encoded bytecode   
 
 ### Vector constant support
 
@@ -69,7 +70,7 @@ end
 
 The Luau VM provides simple hooks to see into the VM at certain points, the Fiu VM emulates 4 of these callbacks. 
 
-`breakHook(stack, debugging, proto, module, upvals)` - When a `LOP_BREAK`/breakpoint is encountered `breakHook` will be called  
+`breakHook(stack, debugging, proto, module, upvals)` - When a `LOP_BREAK`/breakpoint is encountered `breakHook` will be called, the first return must be `true` or `false` to specify if the VM is meant to exit and return instead  
 `interruptHook(stack, debugging, proto, module, upvals)` - When a vm interrupt occurs the `interruptHook` will be called  
 `panicHook(message, stack, debugging, proto, module, upvals)` - When an unprotected error occurs within the VM the `panicHook` will be called if `errorHandling` is enabled  
 `stepHook(stack, debugging, proto, module, upvals)` - When a VM step (In Fiu, when the PC increases) occurs `stepHook` will be called  
@@ -89,6 +90,17 @@ end
 settings.callHooks.interruptHook = function(stack, debugging)
 	print(debugging.name, "interrupted!")
 end
+```
+
+Debug Hook Example:
+
+```lua
+settings.callHooks.breakHook = function()
+    return true, "Hooked by LOP_BREAK!"
+end
+
+-- later
+print(luau_load()()) --> Hooked by LOP_BREAK!
 ```
  
 # Contributing

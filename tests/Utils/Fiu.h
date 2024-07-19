@@ -257,7 +257,7 @@ void fiuDecodeProto(lua_State* L, string src, vector<string> protoCode)
 		else if (
 			field == "debugname" || field == "isvararg" ||
 			field == "protos" || field == "code" ||
-			field == "lineinfoenabled" || field == "instructionlineinfo" 
+			field == "lineinfoenabled" || field == "instructionlineinfo"
 		)
 		{
 			if (field == "isvararg")
@@ -479,7 +479,7 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 		}
 		if (
 			field == "debugname" || field == "isvararg" ||
-			field == "protos" || field == "code" || field == "debugcode" ||
+			field == "protos" || field == "code" ||
 			field == "lineinfoenabled" || field == "instructionlineinfo"
 		)
 		{

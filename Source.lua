@@ -161,6 +161,7 @@ local function luau_newsettings()
 		allowProxyErrors = false,
 		useImportConstants = false,
 		staticEnvironment = {},
+		decodeOp = function(op) return op end
 	}
 end
 
@@ -177,6 +178,7 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
 	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
 	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
+	assert(type(luau_settings.decodeOp) == "function", "luau_settings.function should be a function")
 end
 
 local function resolveImportConstant(static, count, k0, k1, k2)
@@ -271,7 +273,7 @@ local function luau_deserialize(bytecode, luau_settings)
 	end
 
 	local function readInstruction(codeList)
-		local value = readWord()
+		local value = luau_settings.decodeOp(readWord())
 		local opcode = bit32_band(value, 0xFF)
 
 		local opinfo = opList[opcode + 1]
@@ -388,6 +390,11 @@ local function luau_deserialize(bytecode, luau_settings)
 
 			skipnext = readInstruction(codelist)
 		end
+		
+		local debugcodelist = table_create(sizecode) 
+		for i = 1, sizecode do 
+			debugcodelist[i] = codelist[i].opcode
+		end 
 
 		local sizek = readVarInt()
 		local klist = table_create(sizek)
@@ -508,6 +515,7 @@ local function luau_deserialize(bytecode, luau_settings)
 
 			sizecode = sizecode;
 			code = codelist;
+			debugcode = debugcodelist;
 
 			sizek = sizek;
 			k = klist;
@@ -615,6 +623,7 @@ local function luau_load(module, env, luau_settings)
 
 			local top, pc, open_upvalues, generalized_iterators = -1, 1, setmetatable({}, {__mode = "vs"}), setmetatable({}, {__mode = "ks"})
 			local constants = proto.k
+			local debugopcodes = proto.debugcode
 			local extensions = luau_settings.extensions
 
 			while alive do
@@ -635,10 +644,15 @@ local function luau_load(module, env, luau_settings)
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
 					if breakHook then
-						breakHook(stack, debugging, proto, module, upvals)
-					else
-						error("Breakpoint encountered without a break hook")
+						local results = table.pack(breakHook(stack, debugging, proto, module, upvals))
+						
+						if results[1] then 
+							return table_unpack(results, 2, #results)
+						end 
 					end
+					
+					pc -= 1
+					op = debugopcodes[pc]
 				elseif op == 2 then --[[ LOADNIL ]]
 					stack[inst.A] = nil
 				elseif op == 3 then --[[ LOADB ]]

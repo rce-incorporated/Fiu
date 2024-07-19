@@ -626,9 +626,14 @@ local function luau_load(module, env, luau_settings)
 			local debugopcodes = proto.debugcode
 			local extensions = luau_settings.extensions
 
+			local handlingBreak = false
+			local inst, op
 			while alive do
-				local inst = code[pc]
-				local op = inst.opcode
+				if handlingBreak then
+					inst = code[pc]
+					op = inst.opcode
+					handlingBreak = false
+				end
 
 				debugging.pc = pc
 				debugging.top = top
@@ -653,6 +658,7 @@ local function luau_load(module, env, luau_settings)
 					
 					pc -= 1
 					op = debugopcodes[pc]
+					handlingBreak = true
 				elseif op == 2 then --[[ LOADNIL ]]
 					stack[inst.A] = nil
 				elseif op == 3 then --[[ LOADB ]]

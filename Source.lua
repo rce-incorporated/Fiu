@@ -472,14 +472,14 @@ local function luau_deserialize(bytecode, luau_settings)
 			local lastline = 0
 			for j = 1, intervals do
 				lastline += readWord()
-				abslineinfo[j] = lastline
+				abslineinfo[j] = lastline % (2 ^ 32)
 			end
 
 			instructionlineinfo = table_create(sizecode)
 
 			for i = 1, sizecode do 
 				--// p->abslineinfo[pc >> p->linegaplog2] + p->lineinfo[pc];
-				table_insert(instructionlineinfo, abslineinfo[bit32_rshift(i, linegaplog2) + 1] + lineinfo[i])
+				table_insert(instructionlineinfo, abslineinfo[bit32_rshift(i - 1, linegaplog2) + 1] + lineinfo[i])
 			end
 		end
 
@@ -527,7 +527,7 @@ local function luau_deserialize(bytecode, luau_settings)
 		local index = readByte()
 
 		while index ~= 0 do
-			readString()
+			readVarInt()
 
 			index = readByte()
 		end

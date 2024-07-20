@@ -5,7 +5,7 @@ Pronounced like "Phew". This interpreter aims to provide a decently fast and rel
 Fiu does not taint the environment if you pass a table of functions or a wrapper around `getfenv` that does not taint Fiu's thread. Note that only an interpreter is provided, and compiled code must be obtained from an external source. While Fiu is in a working state, bugs and side effects can be encountered! Open an [issue](https://github.com/TheGreatSageEqualToHeaven/Fiu/issues) if you encounter any issues.
 
 # Usage
-Fiu can be downloaded from the [releases page](https://github.com/rce-incorporated/Fiu/releases) and the experimental version from [here](https://github.com/rce-incorporated/Fiu/tree/experimental).
+Fiu can be coied from the [Source.lua](https://github.com/rce-incorporated/Fiu/blob/main/Source.lua) file on the repository.
 
 - `luau_load(module | bytecode, env, settings?)` <div>Accepts a Luau module or bytecode. Returns the main prototype wrapped and a `luau_close` function to kill the interpreter if needed.</div>
 - `luau_deserialize(bytecode, settings?)` <div>Used to deserialise bytecode.</div>

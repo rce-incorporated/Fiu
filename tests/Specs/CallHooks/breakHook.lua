@@ -52,16 +52,10 @@ end
 local module = Fiu.luau_deserialize(compileResult)
 
 -- Add Breakpoint
-table.insert(module.mainProto.code, 1, {
-	opcode = 1,
-	opname = "BREAK",
-})
+module.mainProto.code[1].opcode = 1
 
 -- Add Breakpoint right after step is called
-table.insert(module.mainProto.code, 7, {
-	opcode = 1,
-	opname = "BREAK",
-})
+module.mainProto.code[6].opcode = 1
 
 local func, _ = Fiu.luau_load(module, {}, settings)
 

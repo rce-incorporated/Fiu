@@ -629,7 +629,7 @@ local function luau_load(module, env, luau_settings)
 			local handlingBreak = false
 			local inst, op
 			while alive do
-				if handlingBreak then
+				if not handlingBreak then
 					inst = code[pc]
 					op = inst.opcode
 					handlingBreak = false

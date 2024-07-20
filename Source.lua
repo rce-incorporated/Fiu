@@ -632,8 +632,9 @@ local function luau_load(module, env, luau_settings)
 				if not handlingBreak then
 					inst = code[pc]
 					op = inst.opcode
-					handlingBreak = false
 				end
+
+				handlingBreak = false
 
 				debugging.pc = pc
 				debugging.top = top

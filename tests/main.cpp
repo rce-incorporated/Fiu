@@ -2,6 +2,7 @@
 #include "luau/CLI/FileUtils.h"
 #include "luau/CLI/Coverage.h"
 #include "Luau/Compiler.h"
+#include "Luau/BytecodeBuilder.h"
 #include "Luau/CodeGen.h"
 #include "Luau/ExperimentalFlags.h"
 
@@ -81,7 +82,7 @@ const char* const fiuUnsupportedExperimentalTests[] = {
 	"Conformance/Deserializer",
 };
 
-TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled", bool codegen = false)
+TestCompileResult compileTest(string source, Luau::CompileOptions opts, const char* name = "Compiled", Luau::BytecodeEncoder *encoder = nullptr, bool codegen = false)
 {
 	lua_State* L = luaL_newstate();
 	if (codegen)
@@ -89,7 +90,7 @@ TestCompileResult compileTest(string source, Luau::CompileOptions opts, const ch
 			Luau::CodeGen::create(L);
 		else
 			return {false, "Platform does not support CodeGen"};
-	string bytecode = Luau::compile(source, opts);
+	string bytecode = Luau::compile(source, opts, {}, encoder);
 	if (luau_load(L, name, bytecode.data(), bytecode.size(), 0) == 0)
 	{
 		if (codegen)
@@ -291,10 +292,28 @@ int testOk(lua_State* L)
 	return 0;
 }
 
+struct OffsetBytecodeEncoder : Luau::BytecodeEncoder
+{
+public:
+    OffsetBytecodeEncoder() : offset(0) {}
+	void setOffset(uint32_t s) {
+        offset = s;
+    }
+    void encode(uint32_t* data, size_t count) override
+    {
+		for (size_t i = 0; i < count; ++i)
+			data[i] += offset;
+        return;
+    }
+private:
+    uint32_t offset;
+};
+
 int luauCompile(lua_State* L)
 {
 	const char* source = luaL_checkstring(L, 1);
 	Luau::CompileOptions options = compleOptions();
+	OffsetBytecodeEncoder encoder;
 	if (!lua_isnone(L, 2) && !lua_isnil(L, 2))
 	{
 		options = {};
@@ -322,7 +341,12 @@ int luauCompile(lua_State* L)
 			options.vectorType = luaL_checkstring(L, -1);
 		lua_pop(L, 6);
 	}
-	TestCompileResult compileResult = compileTest(source, options);
+	if (!lua_isnone(L, 3) && !lua_isnil(L, 3))
+	{
+		int num = luaL_checknumber(L, 3);
+		encoder.setOffset(num);
+	}
+	TestCompileResult compileResult = compileTest(source, options, "Compiled", &encoder);
 	if (compileResult.success)
 	{
 		lua_pushboolean(L, 1);
@@ -973,7 +997,7 @@ int main(int argc, char* argv[])
 	}
 	
 	// Compile Fiu (CodeGen)
-	TestCompileResult fiuCodeGenCompileResult = compileTest(fiuSource, compleOptions(), "FiuCodeGen", true);
+	TestCompileResult fiuCodeGenCompileResult = compileTest(fiuSource, compleOptions(), "FiuCodeGen", nullptr, true);
 	if (!fiuCodeGenCompileResult.success)
 	{
 		printf("[%s] Failed to Compile 'Fiu'(CodeGen): %s\n", WARN_SYMBOL, fiuCodeGenCompileResult.data.c_str());

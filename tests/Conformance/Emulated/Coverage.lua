@@ -90,6 +90,6 @@ assert(MATCH(
 	}
 ))
 
-assert(hits == 7, "Coverage must start with no hits")
+assert(hits == 7, "Coverage must have 7 hits")
 
 OK()

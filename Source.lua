@@ -184,6 +184,8 @@ end
 local function getmaxline(module, protoid)
 	local proto = if (protoid == nil) then module.mainProto else module.protoList[protoid]
 	local size = -1
+	
+	assert(proto.lineinfoenabled, "proto must have debug enabled")
 
 	for pc = 1, proto.sizecode do
 		local line = proto.instructionlineinfo[pc]
@@ -200,6 +202,8 @@ end
 
 local function getcoverage(module, protoid, depth, callback, size)
 	local proto = if (protoid == nil) then module.mainProto else module.protoList[protoid]
+
+	assert(proto.lineinfoenabled, "proto must have debug enabled")
 
 	local buffer = {}
 

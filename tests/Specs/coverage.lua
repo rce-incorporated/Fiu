@@ -18,17 +18,21 @@
 	
 	local module = Fiu.luau_deserialize(compileResult)
 	
-	local success, err = pcall(Fiu.luau_getcoverage, module, nil, function() end)
+	local success, err = pcall(Fiu.luau_getcoverage)
 	assert(not success, "Must fail")
-	assert(err == "proto must have debug enabled", "Error does not match")
+	assert(err:find("module must be a table$"), "Error does not match")
+
+	success, err = pcall(Fiu.luau_getcoverage, module, nil, function() end)
+	assert(not success, "Must fail")
+	assert(err:find("proto must have debug enabled$"), "Error does not match")
 
 	success, err = pcall(Fiu.luau_getcoverage, module, "string", function() end)
 	assert(not success, "Must fail")
-	assert(err == "protoid must be a number or nil", "Error does not match")
+	assert(err:find("protoid must be a number or nil$"), "Error does not match")
 
 	success, err = pcall(Fiu.luau_getcoverage, module, 1, "")
 	assert(not success, "Must fail")
-	assert(err == "callback must be a function", "Error does not match")
+	assert(err:find("callback must be a function$"), "Error does not match")
 end
 
 --[[Full coverage: Level 2]] do

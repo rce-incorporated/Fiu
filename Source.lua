@@ -181,6 +181,55 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.decodeOp) == "function", "luau_settings.function should be a function")
 end
 
+local function getmaxline(module, protoid)
+	local proto = if (protoid == nil) then module.mainProto else module.protoList[protoid]
+	local size = -1
+
+	for pc = 1, proto.sizecode do
+		local line = proto.instructionlineinfo[pc]
+		size = if (line > size) then line else size
+	end
+
+	for i, subid in proto.protos do
+		local maxline = getmaxline(module, subid)
+		size = if (maxline > size) then maxline else size
+	end
+
+	return size
+end
+
+local function getcoverage(module, protoid, depth, callback, size)
+	local proto = if (protoid == nil) then module.mainProto else module.protoList[protoid]
+
+	local buffer = {}
+
+	for pc = 1, proto.sizecode do
+		local inst = proto.code[pc]
+		local line = proto.instructionlineinfo[pc]
+
+		if (inst.opcode ~= 69) then --[[ COVERAGE ]]
+			continue
+		end
+
+		local hits = inst.E
+
+		buffer[line] = if ((buffer[line] or 0) > hits) then buffer[line] else hits
+	end
+
+	callback(proto.debugname, proto.linedefined, depth, buffer, size)
+
+	for i, subid in proto.protos do
+		getcoverage(module, subid, depth + 1, callback, size)
+	end
+end
+
+local function luau_getcoverage(module, protoid, callback)
+	assert(type(module) == "table", "module must be a table")
+	assert(type(protoid) == "number" or type(protoid) == "nil", "protoid must be a number or nil")
+	assert(type(callback) == "function", "callback must be a function")
+	getcoverage(module, protoid, 0, callback, getmaxline(module))
+end
+
 local function resolveImportConstant(static, count, k0, k1, k2)
 	local res = static[k0]
 	if count < 2 or res == nil then
@@ -1334,4 +1383,5 @@ return {
 	luau_validatesettings = luau_validatesettings,
 	luau_deserialize = luau_deserialize,
 	luau_load = luau_load,
+	luau_getcoverage = luau_getcoverage,
 }

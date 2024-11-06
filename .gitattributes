@@ -1,0 +1,15 @@
+# Auto detect text files and perform LF normalization
+*.lua text=auto
+*.lua eol=lf
+*.md text=auto
+*.md eol=lf
+*.yml text=auto
+*.yml eol=lf
+*.cpp text=auto
+*.cpp eol=lf
+*.c text=auto
+*.c eol=lf
+*.h text=auto
+*.h eol=lf
+*.txt text=auto
+*.txt eol=lf

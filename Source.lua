@@ -1018,10 +1018,17 @@ local function luau_load(module, env, luau_settings)
 					local value = stack[inst.B]
 					stack[inst.A] = if value then value else inst.K or false
 				elseif op == 49 then --[[ CONCAT ]]
-					local s = ""
-					for i = inst.B, inst.C do
-						s ..= stack[i]
+					local B, C = inst.B, inst.C
+					local success, s = pcall(table.concat, stack, "", B, C)
+	
+					if not success then
+						str = memory[B]
+	
+						for i = B + 1, C do
+							str ..= stack[i]
+						end
 					end
+
 					stack[inst.A] = s
 				elseif op == 50 then --[[ NOT ]]
 					stack[inst.A] = not stack[inst.B]

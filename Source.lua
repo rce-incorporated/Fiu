@@ -14,6 +14,7 @@ local table_unpack = table.unpack
 local table_create = table.create
 local table_insert = table.insert
 local table_remove = table.remove
+local table_concat = table.concat
 
 local coroutine_create = coroutine.create
 local coroutine_yield = coroutine.yield
@@ -1019,7 +1020,7 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = if value then value else inst.K or false
 				elseif op == 49 then --[[ CONCAT ]]
 					local B, C = inst.B, inst.C
-					local success, s = pcall(table.concat, stack, "", B, C)
+					local success, s = pcall(table_concat, stack, "", B, C)
 	
 					if not success then
 						str = stack[B]

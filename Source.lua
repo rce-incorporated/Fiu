@@ -179,7 +179,7 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
 	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
 	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
-	assert(type(luau_settings.decodeOp) == "function", "luau_settings.function should be a function")
+	assert(type(luau_settings.decodeOp) == "function", "luau_settings.decodeOp should be a function")
 end
 
 local function getmaxline(module, protoid)

@@ -11,6 +11,7 @@ Fiu can be copied from the [Source.lua](https://github.com/rce-incorporated/Fiu/
 - `luau_deserialize(bytecode, settings?)` <div>Used to deserialise bytecode.</div>
 - `luau_newsettings()` <div>Used to create a table of default settings.</div>
 - `luau_validatesettings(settings)` <div>Used to validate the passed settings.</div>
+- `luau_getcoverage(module, protoid, callback)` <div>Collects `LOP_COVERAGE` hits and calls `callback` with `(proto_debugname, proto_linedefined, proto_depth, hit_buffer, max_line)`</div>
 
 ## Settings
 

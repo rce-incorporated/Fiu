@@ -1023,10 +1023,10 @@ local function luau_load(module, env, luau_settings)
 					local success, s = pcall(table_concat, stack, "", B, C)
 	
 					if not success then
-						str = stack[B]
+						s = stack[B]
 	
 						for i = B + 1, C do
-							str ..= stack[i]
+							s ..= stack[i]
 						end
 					end
 

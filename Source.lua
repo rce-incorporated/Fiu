@@ -161,6 +161,7 @@ local function luau_newsettings()
 		generalizedIteration = true,
 		allowProxyErrors = false,
 		useImportConstants = false,
+		reuseClosures = false,
 		staticEnvironment = {},
 		decodeOp = function(op) return op end
 	}
@@ -179,6 +180,7 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
 	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
 	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
+	assert(type(luau_settings.reuseClosures) == "boolean", "luau_settings.reuseClosures should be a boolean")
 	assert(type(luau_settings.decodeOp) == "function", "luau_settings.decodeOp should be a function")
 end
 
@@ -704,7 +706,7 @@ local function luau_load(module, env, luau_settings)
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
 					if breakHook then
-						local results = table.pack(breakHook(stack, debugging, proto, module, upvals))
+						local results = table_pack(breakHook(stack, debugging, proto, module, upvals))
 						
 						if results[1] then 
 							return table_unpack(results, 2, #results)
@@ -1192,8 +1194,22 @@ local function luau_load(module, env, luau_settings)
 
 					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
-					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
+					local K = inst.K
 
+					local deduplicated = false 
+					local originalClosure
+					local originalUpvalues					
+																			
+					if luau_settings.reuseClosures then
+						originalClosure = K.Closure										
+						if originalClosure then
+							deduplicated = true
+							originalUpvalues = K.Upvalues
+						end
+					end
+
+					local newPrototype = protolist[K.Index + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
+	
 					local nups = newPrototype.nups
 					local upvalues = table_create(nups)
 					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)

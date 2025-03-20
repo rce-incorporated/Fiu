@@ -4,6 +4,7 @@ local pcall = pcall
 local error = error
 local tonumber = tonumber
 local assert = assert
+local rawequal = rawequal
 local setmetatable = setmetatable
 
 local string_format = string.format
@@ -58,6 +59,9 @@ local ttisfunction = function(v) return type(v) == "function" end
 --		4 = AUX import
 --		5 = AUX boolean low 1 bit
 --		6 = AUX number low 24 bits
+--		7 = B
+-- 		8 = AUX number low 16 bits
+--		9 = CLOSURE
 -- // HAS_AUX boolean specifies whether the instruction is followed up with an AUX word, which may be used to execute the instruction.
 
 local opList = {
@@ -125,7 +129,7 @@ local opList = {
 	{ "FORGPREP_NEXT", 4, 0, false },
 	{ "DEP_FORGLOOP_NEXT", 0, 0, false },
 	{ "GETVARARGS", 2, 0, false },
-	{ "DUPCLOSURE", 4, 3, false },
+	{ "DUPCLOSURE", 4, 9, false },
 	{ "PREPVARARGS", 1, 0, false },
 	{ "LOADKX", 1, 1, true },
 	{ "JUMPX", 5, 0, false },
@@ -419,6 +423,8 @@ local function luau_deserialize(bytecode, luau_settings)
 			inst.K = k[inst.B + 1]
 		elseif kmode == 8 then --// AUX number low 16 bits
 			inst.K = bit32_band(inst.aux, 0xf)
+		elseif kmode == 9 then --// CLOSURE
+			inst.K = { Index = k[inst.D + 1] } 
 		end
 	end
 
@@ -1194,6 +1200,7 @@ local function luau_load(module, env, luau_settings)
 
 					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
+					local A = inst.A
 					local K = inst.K
 
 					local deduplicated = false 
@@ -1208,29 +1215,82 @@ local function luau_load(module, env, luau_settings)
 						end
 					end
 
-					local newPrototype = protolist[K.Index + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
-	
+					local newPrototype = protolist[K.Index + 1]
 					local nups = newPrototype.nups
-					local upvalues = table_create(nups)
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
 
-					for i = 1, nups do
-						local pseudo = code[pc]
-						pc += 1
+					local fallback = true 
 
-						local type = pseudo.A
-						if type == 0 then --// value
-							local upvalue = {
-								value = stack[pseudo.B],
-								index = "value",--// self reference
-							}
-							upvalue.store = upvalue
+					if deduplicated then
+						stack[inst.A] = originalClosure
 
-							upvalues[i] = upvalue
+						local temporaryUpvalues = { }
+						local tpc = pc
 
-							--// references dont get handled by DUPCLOSURE
-						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B + 1]
+						for i = 1, nups do
+							local pseudo = code[tpc]
+							tpc += 1
+
+							local type = pseudo.A
+							if type == 0 then --// value
+								local upvalue = {
+									value = stack[pseudo.B],
+									index = "value",--// self reference
+								}
+								upvalue.store = upvalue
+
+								temporaryUpvalues[i] = upvalue
+
+								--// references dont get handled by DUPCLOSURE
+							elseif type == 2 then --// upvalue
+								temporaryUpvalues[i] = upvals[pseudo.B + 1]
+							end
+						end
+
+						local isequal = true 
+
+						for i, upv in originalUpvalues do 
+							local tuv = temporaryUpvalues[i]
+							if rawequal(upv.store[upv.index], tuv.store[tuv.index]) then 
+								isequal = false
+								break
+							end
+						end
+
+						if isequal then 
+							fallback = false
+							pc = tpc
+						end
+					end 
+
+					if fallback then 
+						local upvalues = table_create(nups)
+						local closure = luau_wrapclosure(module, newPrototype, upvalues)
+						
+						stack[A] = closure
+
+						if luau_settings.reuseClosures then
+							K.Closure = closure 
+							K.Upvalues = upvalues		
+						end
+
+						for i = 1, nups do
+							local pseudo = code[pc]
+							pc += 1
+
+							local type = pseudo.A
+							if type == 0 then --// value
+								local upvalue = {
+									value = stack[pseudo.B],
+									index = "value",--// self reference
+								}
+								upvalue.store = upvalue
+
+								upvalues[i] = upvalue
+
+								--// references dont get handled by DUPCLOSURE
+							elseif type == 2 then --// upvalue
+								upvalues[i] = upvals[pseudo.B + 1]
+							end
 						end
 					end
 				elseif op == 65 then --[[ PREPVARARGS ]]

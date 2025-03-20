@@ -1206,8 +1206,10 @@ local function luau_load(module, env, luau_settings)
 					local deduplicated = false 
 					local originalClosure
 					local originalUpvalues					
-																			
-					if luau_settings.reuseClosures then
+												
+					local reuseClosures = luau_settings.reuseClosures	
+
+					if reuseClosures then
 						originalClosure = K.Closure										
 						if originalClosure then
 							deduplicated = true
@@ -1221,7 +1223,7 @@ local function luau_load(module, env, luau_settings)
 					local fallback = true 
 
 					if deduplicated then
-						stack[inst.A] = originalClosure
+						stack[A] = originalClosure
 
 						local temporaryUpvalues = { }
 						local tpc = pc
@@ -1265,10 +1267,10 @@ local function luau_load(module, env, luau_settings)
 					if fallback then 
 						local upvalues = table_create(nups)
 						local closure = luau_wrapclosure(module, newPrototype, upvalues)
-						
+
 						stack[A] = closure
 
-						if luau_settings.reuseClosures then
+						if reuseClosures then
 							K.Closure = closure 
 							K.Upvalues = upvalues		
 						end

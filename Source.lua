@@ -327,8 +327,8 @@ local function luau_deserialize(bytecode, luau_settings)
 	end
 
 	local function readInstruction(codeList)
-		local value = luau_settings.decodeOp(readWord())
-		local opcode = bit32_band(value, 0xFF)
+		local value = readWord()
+		local opcode = bit32_band(luau_settings.decodeOp(value), 0xFF)
 
 		local opinfo = opList[opcode + 1]
 		local opname = opinfo[1]

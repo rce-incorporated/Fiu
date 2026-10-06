@@ -61,7 +61,6 @@ local ttisfunction = function(v) return type(v) == "function" end
 --		6 = AUX number low 24 bits
 --		7 = B
 -- 		8 = AUX number low 16 bits
---		9 = CLOSURE
 -- // HAS_AUX boolean specifies whether the instruction is followed up with an AUX word, which may be used to execute the instruction.
 
 local opList = {
@@ -129,7 +128,7 @@ local opList = {
 	{ "FORGPREP_NEXT", 4, 0, false },
 	{ "DEP_FORGLOOP_NEXT", 0, 0, false },
 	{ "GETVARARGS", 2, 0, false },
-	{ "DUPCLOSURE", 4, 9, false },
+	{ "DUPCLOSURE", 4, 3, false },
 	{ "PREPVARARGS", 1, 0, false },
 	{ "LOADKX", 1, 1, true },
 	{ "JUMPX", 5, 0, false },
@@ -423,8 +422,6 @@ local function luau_deserialize(bytecode, luau_settings)
 			inst.K = k[inst.B + 1]
 		elseif kmode == 8 then --// AUX number low 16 bits
 			inst.K = bit32_band(inst.aux, 0xf)
-		elseif kmode == 9 then --// CLOSURE
-			inst.K = { Index = k[inst.D + 1] } 
 		end
 	end
 
@@ -639,6 +636,7 @@ local function luau_load(module, env, luau_settings)
 
 	local protolist = module.protoList
 	local mainProto = module.mainProto
+	local closureCache = {}
 
 	local breakHook = luau_settings.callHooks.breakHook
 	local stepHook = luau_settings.callHooks.stepHook
@@ -1201,79 +1199,43 @@ local function luau_load(module, env, luau_settings)
 					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local A = inst.A
-					local K = inst.K
-
-					local deduplicated = false 
-					local originalClosure
-					local originalUpvalues					
-												
-					local reuseClosures = luau_settings.reuseClosures	
-
-					if reuseClosures then
-						originalClosure = K.Closure										
-						if originalClosure then
-							deduplicated = true
-							originalUpvalues = K.Upvalues
-						end
-					end
-
-					local newPrototype = protolist[K.Index + 1]
+					local newPrototype = protolist[inst.K + 1]
 					local nups = newPrototype.nups
+					local cached
+					if luau_settings.reuseClosures then
+						cached = closureCache[inst]
+					end
+					local canReuse = cached ~= nil
 
-					local fallback = true 
-
-					if deduplicated then
-						stack[A] = originalClosure
-
-						local temporaryUpvalues = { }
-						local tpc = pc
-
+					if cached then
+						stack[A] = cached.closure
 						for i = 1, nups do
-							local pseudo = code[tpc]
-							tpc += 1
-
-							local type = pseudo.A
-							if type == 0 then --// value
-								local upvalue = {
-									value = stack[pseudo.B],
-									index = "value",--// self reference
-								}
-								upvalue.store = upvalue
-
-								temporaryUpvalues[i] = upvalue
-
-								--// references dont get handled by DUPCLOSURE
-							elseif type == 2 then --// upvalue
-								temporaryUpvalues[i] = upvals[pseudo.B + 1]
-							end
-						end
-
-						local isequal = true 
-
-						for i, upv in originalUpvalues do 
-							local tuv = temporaryUpvalues[i]
-							if rawequal(upv.store[upv.index], tuv.store[tuv.index]) then 
-								isequal = false
+							local pseudo = code[pc + i - 1]
+							local previous = cached.upvalues[i]
+							if pseudo.A == 0 then --// value capture
+								if not rawequal(previous.store[previous.index], stack[pseudo.B]) then
+									canReuse = false
+									break
+								end
+							elseif pseudo.A == 2 then --// upvalue capture
+								if not rawequal(previous, upvals[pseudo.B + 1]) then
+									canReuse = false
+									break
+								end
+							else
+								canReuse = false
 								break
 							end
 						end
+					end
 
-						if isequal then 
-							fallback = false
-							pc = tpc
-						end
-					end 
-
-					if fallback then 
+					if canReuse then
+						pc += nups
+					else
 						local upvalues = table_create(nups)
 						local closure = luau_wrapclosure(module, newPrototype, upvalues)
 
 						stack[A] = closure
-
-						if reuseClosures then
-							K.Closure = closure 
-							K.Upvalues = upvalues		
-						end
 
 						for i = 1, nups do
 							local pseudo = code[pc]
@@ -1293,6 +1255,10 @@ local function luau_load(module, env, luau_settings)
 							elseif type == 2 then --// upvalue
 								upvalues[i] = upvals[pseudo.B + 1]
 							end
+						end
+
+						if luau_settings.reuseClosures then
+							closureCache[inst] = {closure = closure, upvalues = upvalues}
 						end
 					end
 				elseif op == 65 then --[[ PREPVARARGS ]]

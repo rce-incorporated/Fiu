@@ -1,6 +1,5 @@
-#include "luau/CLI/Require.h"
-#include "luau/CLI/FileUtils.h"
-#include "luau/CLI/Coverage.h"
+#include "Luau/FileUtils.h"
+#include "Luau/Coverage.h"
 #include "Luau/Compiler.h"
 #include "Luau/BytecodeBuilder.h"
 #include "Luau/CodeGen.h"
@@ -276,7 +275,7 @@ bool isFiuSupported(const char* flag)
 void setLuauFlagsDefault()
 {
 	for (Luau::FValue<bool>* flag = Luau::FValue<bool>::list; flag; flag = flag->next)
-		if (strncmp(flag->name, "Luau", 4) == 0 && !Luau::isFlagExperimental(flag->name) && isFiuSupported(flag->name)) {
+		if (strncmp(flag->name, "Luau", 4) == 0 && !Luau::isAnalysisFlagExperimental(flag->name) && isFiuSupported(flag->name)) {
 			flag->value = true;
 			printf("[%s] Flag '%s' set to true\n", SUCCESS_SYMBOL, flag->name);
 		}
@@ -905,6 +904,26 @@ int main(int argc, char* argv[])
 		else if (strcmp(argv[i], "-defaultflags") == 0)
 		{
 			setLuauFlagsDefault();
+		}
+		else if (strcmp(argv[i], "-setflag") == 0)
+		{
+			if (++i >= argc)
+				return 1;
+			bool found = false;
+			for (Luau::FValue<bool>* flag = Luau::FValue<bool>::list; flag; flag = flag->next)
+			{
+				if (strcmp(flag->name, argv[i]) == 0)
+				{
+					flag->value = true;
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+			{
+				printf("Error: Unknown Luau flag '%s'\n", argv[i]);
+				return 1;
+			}
 		}
 		else if (strcmp(argv[i], "-fiureadyflags") == 0)
 		{

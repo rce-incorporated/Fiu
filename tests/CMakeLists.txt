@@ -9,23 +9,8 @@ option(LUAU_WERROR "Warnings as errors" OFF)
 option(LUAU_STATIC_CRT "Link with the static CRT (/MT)" OFF)
 add_subdirectory(luau)
 
-add_library(Luau.Fiu.CLI STATIC
-  luau/CLI/Coverage.h
-  luau/CLI/Coverage.cpp
-  luau/CLI/FileUtils.h
-  luau/CLI/FileUtils.cpp
-  luau/CLI/Flags.h
-  luau/CLI/Flags.cpp
-  luau/CLI/Profiler.h
-  luau/CLI/Profiler.cpp
-  luau/CLI/Require.h
-  luau/CLI/Require.cpp
-)
-target_link_libraries(Luau.Fiu.CLI Luau.VM)
-target_link_libraries(Luau.Fiu.CLI Luau.Common)
-target_link_libraries(Luau.Fiu.CLI Luau.Config)
-
 add_executable(fiu-tests
+  luau/CLI/src/Coverage.cpp
   Utils/Formatter.h
   Utils/Context.h
   Utils/Fiu.h
@@ -35,7 +20,8 @@ add_executable(fiu-tests
   main.cpp
 )
 
-target_link_libraries(fiu-tests Luau.Fiu.CLI)
+target_link_libraries(fiu-tests Luau.CLI.lib)
+target_link_libraries(fiu-tests Luau.VM)
 
 # Luau Core Components
 target_link_libraries(fiu-tests Luau.Compiler)

@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./build/fiu-tests
-          key: ${{ runner.os }}-build-test-suite-${{ hashFiles('./tests/**/*.cpp') }}-${{ hashFiles('./tests/**/*.h') }}
+          key: ${{ runner.os }}-build-test-suite-${{ hashFiles('./tests/CMakeLists.txt', './tests/**/*.cpp', './tests/**/*.h') }}
 
       - if: ${{ steps.cache-test-suite.outputs.cache-hit != 'true' }}
         name: Make tests
@@ -36,3 +36,12 @@ jobs:
       - name: Run tests with Fiu Ready DefaultFlags
         run: |
           ./build/fiu-tests -O2 -D2 -fiureadyflags -defaultflags
+
+      - name: Run newer bytecode tests
+        run: |
+          ./build/fiu-tests -O2 -D2 -t Specs/bytecodeVersions -setflag LuauEmitCallFeedback
+          ./build/fiu-tests -O2 -D2 -t Specs/bytecodeVersions -setflag LuauBytecodeCostModel
+          ./build/fiu-tests -O2 -D2 -t Specs/bytecodeVersions -setflag LuauCompileEmitVectorDouble
+          ./build/fiu-tests -O2 -D2 -t Specs/vectorLib -setflag LuauCompileEmitVectorDouble
+          ./build/fiu-tests -O2 -D2 -t Specs/bytecodeVersions -setflag LuauCompileFastpcall
+          ./build/fiu-tests -O2 -D2 -t Specs/bytecodeIntegers -setflag LuauIntegerLibrary -setflag LuauIntegerType2

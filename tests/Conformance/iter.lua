@@ -193,8 +193,8 @@ do
   assert(x == 15)
 end
 
--- pairs/ipairs/next may be substituted through getfenv
--- however, they *must* be substituted with functions - we don't support them falling back to generalized iteration
+-- pairs/ipairs/next may be substituted through getfenv.
+-- Tables used as iterators now use generalized iteration.
 function testgetfenv()
   -- Fiu enviroment is nested, in this test context, it would edit the enviroment of global
   -- so we do `getfenv(0)`
@@ -210,7 +210,7 @@ function testgetfenv()
   assert(not ok and err:match("attempt to iterate over a string value"))
 
   local ok, err = pcall(function() for k, v in next, {} do end end)
-  assert(not ok and err:match("attempt to iterate over a table value"))
+  assert(ok)
 end
 
 testgetfenv() -- DONT MOVE THIS LINE

@@ -3,13 +3,13 @@
 local ok, bytecode = Luau.compile([[
 return 9223372036854775807i, -9223372036854775807i
 ]], {
-    optimizationLevel = 2,
-    debugLevel = 2,
-    coverageLevel = 0,
+	optimizationLevel = 2,
+	debugLevel = 2,
+	coverageLevel = 0,
 })
 
 if not ok then
-    error(bytecode)
+	error(bytecode)
 end
 
 local run = Fiu.luau_load(bytecode, getfenv())

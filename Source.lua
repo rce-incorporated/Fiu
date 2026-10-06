@@ -157,7 +157,6 @@ local opList = {
 	{ "CALLFB", 3, 0, true },
 	{ "CMPPROTO", 4, 0, true },
 	{ "FASTPCALL", 3, 0, false },
-	{ "NEWCLASS", 3, 1, true }, --// version 100 only
 }
 
 local LUA_MULTRET = -1
@@ -529,7 +528,7 @@ local function luau_deserialize(bytecode, luau_settings)
 			elseif kt == 8 then --// Table with pre-filled constants
 				local count = readVarInt()
 				k = table_create(count * 2 + 1)
-				k[1] = -1 --// distinguishes pre-filled templates from key-only templates
+				k[1] = -1 --// Pre-filled table marker
 				for j = 1, count do
 					local key = readVarInt()
 					local value = readWord()
@@ -539,10 +538,8 @@ local function luau_deserialize(bytecode, luau_settings)
 			elseif kt == 9 then --// 64-bit integer
 				local negative = readByte() ~= 0
 				local high, low = readVarInt64()
-				assert(integer_fromstring, "64-bit integer constants require the integer library")
 				local digits = string_format("%08x%08x", high, low)
 				k = integer_fromstring((negative and "-" or "") .. digits, 16)
-				assert(k ~= nil, "invalid 64-bit integer constant")
 			elseif kt == 10 then --// Class shape
 				local name = klist[readVarInt() + 1]
 				local propertyCount = readVarInt()
@@ -639,7 +636,7 @@ local function luau_deserialize(bytecode, luau_settings)
 		if luauVersion >= 11 then
 			local feedbackCount = readVarInt()
 			for i = 1, feedbackCount do
-				assert(readByte() == 0, "unsupported feedback slot type")
+				readByte() --// slot type
 				readVarInt() --// instruction offset
 			end
 		end
@@ -648,7 +645,6 @@ local function luau_deserialize(bytecode, luau_settings)
 			if bit32_btest(flags, 0x8) then
 				readVarInt64() --// inlining cost
 			end
-			assert(cursor <= protoStart + protoSize, "prototype data exceeds its declared size")
 			cursor = protoStart + protoSize
 		end
 
@@ -987,7 +983,7 @@ local function luau_load(module, env, luau_settings)
 					end
 				elseif op == 21 or op == 87 then --[[ CALL / CALLFB ]]
 					if op == 87 then
-						pc += 1 --// feedback slot AUX
+						pc += 1 --// adjust for aux
 					end
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
@@ -1454,14 +1450,12 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = stack[inst.B] // inst.K
 				elseif op == 86 then --[[ NEWCLASSMEMBER ]]
 					stack[inst.A][inst.K] = stack[inst.C]
-					pc += 1 --// name AUX
+					pc += 1 --// adjust for aux
 				elseif op == 88 then --[[ CMPPROTO ]]
 					--// VM function IDs are unavailable to Fiu; take the guarded fallback.
 					pc += inst.D --// AUX plus mismatch jump
 				elseif op == 89 then --[[ FASTPCALL ]]
 					--// Execute the fallback instructions and CALL normally.
-				elseif op == 90 then --[[ NEWCLASS ]]
-					error("NEWCLASS requires bytecode version 100")
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end

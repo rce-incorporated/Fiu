@@ -4,6 +4,7 @@ local pcall = pcall
 local error = error
 local tonumber = tonumber
 local assert = assert
+local rawequal = rawequal
 local setmetatable = setmetatable
 
 local string_format = string.format
@@ -58,6 +59,8 @@ local ttisfunction = function(v) return type(v) == "function" end
 --		4 = AUX import
 --		5 = AUX boolean low 1 bit
 --		6 = AUX number low 24 bits
+--		7 = B
+-- 		8 = AUX number low 16 bits
 -- // HAS_AUX boolean specifies whether the instruction is followed up with an AUX word, which may be used to execute the instruction.
 
 local opList = {
@@ -161,6 +164,7 @@ local function luau_newsettings()
 		generalizedIteration = true,
 		allowProxyErrors = false,
 		useImportConstants = false,
+		reuseClosures = false,
 		staticEnvironment = {},
 		decodeOp = function(op) return op end
 	}
@@ -179,6 +183,7 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
 	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
 	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
+	assert(type(luau_settings.reuseClosures) == "boolean", "luau_settings.reuseClosures should be a boolean")
 	assert(type(luau_settings.decodeOp) == "function", "luau_settings.decodeOp should be a function")
 end
 
@@ -631,6 +636,7 @@ local function luau_load(module, env, luau_settings)
 
 	local protolist = module.protoList
 	local mainProto = module.mainProto
+	local closureCache = {}
 
 	local breakHook = luau_settings.callHooks.breakHook
 	local stepHook = luau_settings.callHooks.stepHook
@@ -704,7 +710,7 @@ local function luau_load(module, env, luau_settings)
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
 					if breakHook then
-						local results = table.pack(breakHook(stack, debugging, proto, module, upvals))
+						local results = table_pack(breakHook(stack, debugging, proto, module, upvals))
 						
 						if results[1] then 
 							return table_unpack(results, 2, #results)
@@ -1192,29 +1198,67 @@ local function luau_load(module, env, luau_settings)
 
 					table_move(varargs.list, 1, b, A, stack)
 				elseif op == 64 then --[[ DUPCLOSURE ]]
-					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
-
+					local A = inst.A
+					local newPrototype = protolist[inst.K + 1]
 					local nups = newPrototype.nups
-					local upvalues = table_create(nups)
-					stack[inst.A] = luau_wrapclosure(module, newPrototype, upvalues)
+					local cached
+					if luau_settings.reuseClosures then
+						cached = closureCache[inst]
+					end
+					local canReuse = cached ~= nil
 
-					for i = 1, nups do
-						local pseudo = code[pc]
-						pc += 1
+					if cached then
+						stack[A] = cached.closure
+						for i = 1, nups do
+							local pseudo = code[pc + i - 1]
+							local previous = cached.upvalues[i]
+							if pseudo.A == 0 then --// value capture
+								if not rawequal(previous.store[previous.index], stack[pseudo.B]) then
+									canReuse = false
+									break
+								end
+							elseif pseudo.A == 2 then --// upvalue capture
+								if not rawequal(previous, upvals[pseudo.B + 1]) then
+									canReuse = false
+									break
+								end
+							else
+								canReuse = false
+								break
+							end
+						end
+					end
 
-						local type = pseudo.A
-						if type == 0 then --// value
-							local upvalue = {
-								value = stack[pseudo.B],
-								index = "value",--// self reference
-							}
-							upvalue.store = upvalue
+					if canReuse then
+						pc += nups
+					else
+						local upvalues = table_create(nups)
+						local closure = luau_wrapclosure(module, newPrototype, upvalues)
 
-							upvalues[i] = upvalue
+						stack[A] = closure
 
-							--// references dont get handled by DUPCLOSURE
-						elseif type == 2 then --// upvalue
-							upvalues[i] = upvals[pseudo.B + 1]
+						for i = 1, nups do
+							local pseudo = code[pc]
+							pc += 1
+
+							local type = pseudo.A
+							if type == 0 then --// value
+								local upvalue = {
+									value = stack[pseudo.B],
+									index = "value",--// self reference
+								}
+								upvalue.store = upvalue
+
+								upvalues[i] = upvalue
+
+								--// references dont get handled by DUPCLOSURE
+							elseif type == 2 then --// upvalue
+								upvalues[i] = upvals[pseudo.B + 1]
+							end
+						end
+
+						if luau_settings.reuseClosures then
+							closureCache[inst] = {closure = closure, upvalues = upvalues}
 						end
 					end
 				elseif op == 65 then --[[ PREPVARARGS ]]

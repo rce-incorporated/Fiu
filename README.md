@@ -7,6 +7,8 @@ Fiu does not taint the environment if you pass a table of functions or a wrapper
 # Usage
 Fiu can be copied from the [Source.lua](https://github.com/rce-incorporated/Fiu/blob/main/Source.lua) file on the repository.
 
+Fiu accepts Luau bytecode versions 3 through 14. The work-in-progress class bytecode version 100 is not supported. Bytecode containing 64-bit integer constants requires Luau's `integer` library.
+
 - `luau_load(module | bytecode, env, settings?)` <div>Accepts a Luau module or bytecode. Returns the main prototype wrapped and a `luau_close` function to kill the interpreter if needed.</div>
 - `luau_deserialize(bytecode, settings?)` <div>Used to deserialise bytecode.</div>
 - `luau_newsettings()` <div>Used to create a table of default settings.</div>

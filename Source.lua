@@ -8,6 +8,8 @@ local rawequal = rawequal
 local setmetatable = setmetatable
 
 local string_format = string.format
+local math_floor = math.floor
+local integer_fromstring = if type(integer) == "table" then integer.fromstring else nil
 
 local table_move = table.move
 local table_pack = table.pack
@@ -61,6 +63,7 @@ local ttisfunction = function(v) return type(v) == "function" end
 --		6 = AUX number low 24 bits
 --		7 = B
 -- 		8 = AUX number low 16 bits
+-- 		9 = AUX constant low 16 bits
 -- // HAS_AUX boolean specifies whether the instruction is followed up with an AUX word, which may be used to execute the instruction.
 
 local opList = {
@@ -147,6 +150,14 @@ local opList = {
 	{ "JUMPXEQKS", 4, 6, true },
 	{ "IDIV", 3, 0, false },
 	{ "IDIVK", 3, 2, false },
+	{ "GETUDATAKS", 3, 9, true },
+	{ "SETUDATAKS", 3, 9, true },
+	{ "NAMECALLUDATA", 3, 9, true },
+	{ "NEWCLASSMEMBER", 3, 1, true },
+	{ "CALLFB", 3, 0, true },
+	{ "CMPPROTO", 4, 0, true },
+	{ "FASTPCALL", 3, 0, false },
+	{ "NEWCLASS", 3, 1, true }, --// version 100 only
 }
 
 local LUA_MULTRET = -1
@@ -301,6 +312,25 @@ local function luau_deserialize(bytecode, luau_settings)
 		return result
 	end
 
+	local function readVarInt64()
+		local bytes = {}
+		for i = 1, 10 do
+			local value = readByte()
+			bytes[i] = bit32_band(value, 0x7f)
+			if value < 0x80 then
+				break
+			end
+		end
+
+		local high, low = 0, 0
+		for i = #bytes, 1, -1 do
+			local value = low * 128 + bytes[i]
+			low = value % 0x100000000
+			high = high * 128 + math_floor(value / 0x100000000)
+		end
+		return high, low
+	end
+
 	local function readString()
 		local size = readVarInt()
 
@@ -318,7 +348,9 @@ local function luau_deserialize(bytecode, luau_settings)
 	local typesVersion = 0
 	if luauVersion == 0 then
 		error("the provided bytecode is an error message",0)
-	elseif luauVersion < 3 or luauVersion > 6 then
+	elseif luauVersion == 100 then
+		error("bytecode version 100 is unsupported",0)
+	elseif luauVersion < 3 or luauVersion > 14 then
 		error("the version of the provided bytecode is unsupported",0)
 	elseif luauVersion >= 4 then
 		typesVersion = readByte()
@@ -422,17 +454,22 @@ local function luau_deserialize(bytecode, luau_settings)
 			inst.K = k[inst.B + 1]
 		elseif kmode == 8 then --// AUX number low 16 bits
 			inst.K = bit32_band(inst.aux, 0xf)
+		elseif kmode == 9 then --// AUX constant low 16 bits
+			inst.K = k[bit32_band(inst.aux, 0xffff) + 1]
 		end
 	end
 
 	local function readProto(bytecodeid)
+		local protoSize = if luauVersion >= 12 then readVarInt() else nil
+		local protoStart = cursor
 		local maxstacksize = readByte()
 		local numparams = readByte()
 		local nups = readByte()
 		local isvararg = readByte() ~= 0
 
+		local flags = 0
 		if luauVersion >= 4 then
-			readByte() --// flags 
+			flags = readByte()
 			local typesize = readVarInt();
 			cursor = cursor + typesize;
 		end
@@ -489,6 +526,41 @@ local function luau_deserialize(bytecode, luau_settings)
 				else 
 					k = luau_settings.vectorCtor(x,y,z)
 				end
+			elseif kt == 8 then --// Table with pre-filled constants
+				local count = readVarInt()
+				k = table_create(count * 2 + 1)
+				k[1] = -1 --// distinguishes pre-filled templates from key-only templates
+				for j = 1, count do
+					local key = readVarInt()
+					local value = readWord()
+					k[j * 2] = key
+					k[j * 2 + 1] = value < 0x80000000 and value or value - 0x100000000
+				end
+			elseif kt == 9 then --// 64-bit integer
+				local negative = readByte() ~= 0
+				local high, low = readVarInt64()
+				assert(integer_fromstring, "64-bit integer constants require the integer library")
+				local digits = string_format("%08x%08x", high, low)
+				k = integer_fromstring((negative and "-" or "") .. digits, 16)
+				assert(k ~= nil, "invalid 64-bit integer constant")
+			elseif kt == 10 then --// Class shape
+				local name = klist[readVarInt() + 1]
+				local propertyCount = readVarInt()
+				local methodCount = readVarInt()
+				local members = table_create(propertyCount + methodCount)
+				for j = 1, propertyCount + methodCount do
+					members[j] = klist[readVarInt() + 1]
+				end
+				k = {name = name, propertyCount = propertyCount, members = members}
+			elseif kt == 11 then --// Double-precision vector
+				local x,y,z,w = readDouble(), readDouble(), readDouble(), readDouble()
+				if luau_settings.vectorSize == 4 then
+					k = luau_settings.vectorCtor(x,y,z,w)
+				else
+					k = luau_settings.vectorCtor(x,y,z)
+				end
+			else
+				error("unsupported bytecode constant type: " .. kt)
 			end
 
 			klist[i] = k
@@ -562,6 +634,22 @@ local function luau_deserialize(bytecode, luau_settings)
 			for i = 1, sizeupvalues do
 				readVarInt()
 			end
+		end
+
+		if luauVersion >= 11 then
+			local feedbackCount = readVarInt()
+			for i = 1, feedbackCount do
+				assert(readByte() == 0, "unsupported feedback slot type")
+				readVarInt() --// instruction offset
+			end
+		end
+
+		if luauVersion >= 12 then
+			if bit32_btest(flags, 0x8) then
+				readVarInt64() --// inlining cost
+			end
+			assert(cursor <= protoStart + protoSize, "prototype data exceeds its declared size")
+			cursor = protoStart + protoSize
 		end
 
 		return {
@@ -778,12 +866,12 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = stack[inst.B][stack[inst.C]]
 				elseif op == 14 then --[[ SETTABLE ]]
 					stack[inst.B][stack[inst.C]] = stack[inst.A]
-				elseif op == 15 then --[[ GETTABLEKS ]]
+				elseif op == 15 or op == 83 then --[[ GETTABLEKS / GETUDATAKS ]]
 					local index = inst.K
 					stack[inst.A] = stack[inst.B][index]
 
 					pc += 1 --// adjust for aux 
-				elseif op == 16 then --[[ SETTABLEKS ]]
+				elseif op == 16 or op == 84 then --[[ SETTABLEKS / SETUDATAKS ]]
 					local index = inst.K
 					stack[inst.B][index] = stack[inst.A]
 
@@ -831,7 +919,7 @@ local function luau_load(module, env, luau_settings)
 							upvalues[i] = upvals[pseudo.B + 1]
 						end
 					end
-				elseif op == 20 then --[[ NAMECALL ]]
+				elseif op == 20 or op == 85 then --[[ NAMECALL / NAMECALLUDATA ]]
 					local A = inst.A
 					local B = inst.B
 
@@ -873,7 +961,7 @@ local function luau_load(module, env, luau_settings)
 						if ret_list[1] == true then
 							useFallback = false
 							
-							pc += 1 --// Skip next CALL instruction
+							pc += if callOp == 87 then 2 else 1 --// Skip CALL and its optional AUX
 
 							inst = callInst
 							op = callOp
@@ -897,7 +985,10 @@ local function luau_load(module, env, luau_settings)
 					if useFallback then
 						stack[A] = sb[kv]
 					end
-				elseif op == 21 then --[[ CALL ]]
+				elseif op == 21 or op == 87 then --[[ CALL / CALLFB ]]
+					if op == 87 then
+						pc += 1 --// feedback slot AUX
+					end
 					if interruptHook then
 						interruptHook(stack, debugging, proto, module, upvals)	
 					end
@@ -1050,8 +1141,15 @@ local function luau_load(module, env, luau_settings)
 				elseif op == 54 then --[[ DUPTABLE ]]
 					local template = inst.K
 					local serialized = {}
-					for _, id in template do
-						serialized[constants[id + 1]] = nil
+					if template[1] == -1 then
+						for i = 2, #template, 2 do
+							local valueIndex = template[i + 1]
+							serialized[constants[template[i] + 1]] = if valueIndex >= 0 then constants[valueIndex + 1] else nil
+						end
+					else
+						for _, id in template do
+							serialized[constants[id + 1]] = nil
+						end
 					end
 					stack[inst.A] = serialized
 				elseif op == 55 then --[[ SETLIST ]]
@@ -1354,6 +1452,16 @@ local function luau_load(module, env, luau_settings)
 					stack[inst.A] = stack[inst.B] // stack[inst.C]
 				elseif op == 82 then --[[ IDIVK ]]
 					stack[inst.A] = stack[inst.B] // inst.K
+				elseif op == 86 then --[[ NEWCLASSMEMBER ]]
+					stack[inst.A][inst.K] = stack[inst.C]
+					pc += 1 --// name AUX
+				elseif op == 88 then --[[ CMPPROTO ]]
+					--// VM function IDs are unavailable to Fiu; take the guarded fallback.
+					pc += inst.D --// AUX plus mismatch jump
+				elseif op == 89 then --[[ FASTPCALL ]]
+					--// Execute the fallback instructions and CALL normally.
+				elseif op == 90 then --[[ NEWCLASS ]]
+					error("NEWCLASS requires bytecode version 100")
 				else
 					error("Unsupported Opcode: " .. inst.opname .. " op: " .. op)
 				end
@@ -1424,11 +1532,11 @@ local function luau_load(module, env, luau_settings)
 			end
 		end
 
-		if luau_settings.errorHandling then 
+		if luau_settings.errorHandling then
 			return wrapped
-		else 
+		else
 			return luau_execute
-		end 
+		end
 	end
 
 	return luau_wrapclosure(module, mainProto),  luau_close

@@ -74,7 +74,7 @@ int tableFind(lua_State* L)
 	luaL_checktype(L, -2, LUA_TTABLE);
 	luaL_checkany(L, -1);
 
-	Table* t = hvalue(luaA_toobject(L, -2));
+	LuaTable* t = hvalue(luaA_toobject(L, -2));
 	const TValue* ne = luaA_toobject(L, -1);
 
 	lua_pop(L, 2);
@@ -446,11 +446,8 @@ string fiuEncodeProto(lua_State* L, int compact = 0)
 		lua_pushstring(L, "Expected k");
 		lua_error(L);
 	}
-	Table* tt = luaH_clone(L, hvalue(luaA_toobject(L, -1)));
-	TValue v;
-	sethvalue(L, &v, tt);
-	lua_pop(L, 1);
-	luaA_pushobject(L, &v);
+	lua_clonetable(L, -1);
+	lua_remove(L, -2);
 
 	int constants = lua_gettop(L);
 

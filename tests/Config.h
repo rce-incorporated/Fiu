@@ -141,6 +141,7 @@ FIU_TESTCASES {
 		"Specs/nativeNamecall",
 		"Specs/vectorLib",
 		"Specs/importConstants",
+		"Specs/bytecodeVersions",
 		"Specs/reuseClosures",
 		"Specs/decodeOp",
 		"Specs/coverage",

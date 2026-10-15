@@ -1098,7 +1098,22 @@ local function luau_load(module, env, luau_settings)
 				elseif op == 43 then --[[ MODK ]]
 					stack[inst.A] = stack[inst.B] % inst.K
 				elseif op == 44 then --[[ POWK ]]
-					stack[inst.A] = stack[inst.B] ^ inst.K
+				    local base = stack[inst.B]
+				    local exponent = inst.K
+				
+				    if type(base) == "number" then
+				        if exponent == 2 then
+				            stack[inst.A] = base * base
+				        elseif exponent == 0.5 then
+				            stack[inst.A] = math_sqrt(base)
+				        elseif exponent == 3 then
+				            stack[inst.A] = base * base * base
+				        else
+				            stack[inst.A] = base ^ exponent
+				        end
+				    else
+				        stack[inst.A] = base ^ exponent
+				    end
 				elseif op == 45 then --[[ AND ]]
 					local value = stack[inst.B]
 					stack[inst.A] = if value then stack[inst.C] or false else value

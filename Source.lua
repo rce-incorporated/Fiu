@@ -9,6 +9,7 @@ local setmetatable = setmetatable
 
 local string_format = string.format
 local math_floor = math.floor
+local math_sqrt = math.sqrt
 local integer_fromstring = if type(integer) == "table" then integer.fromstring else nil
 
 local table_move = table.move
